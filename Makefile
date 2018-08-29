@@ -1,4 +1,4 @@
-compile:
+compiler:
 	flex micro.lex
 	gcc lex.yy.c -lfl -o micro
 
