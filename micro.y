@@ -60,7 +60,7 @@ param_decl_list: | param_decl param_decl_tail
 	{}
 param_decl: var_type id
 	{}
-param_decl_tail: | param_decl param_decl_tail
+param_decl_tail: | ',' param_decl param_decl_tail
 	{}
 
 func_declarations: | func_decl func_declarations
