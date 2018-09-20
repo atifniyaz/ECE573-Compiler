@@ -28,6 +28,7 @@
 %token BREAK
 %token FOR
 %token ENDFOR
+%token ASSIGN_OP
 
 %%
 
@@ -40,7 +41,7 @@ pgm_body: decl func_declarations
 decl: | string_decl decl | var_decl decl
 	{}
 
-string_decl: STRING id ':''=' str ';'
+string_decl: STRING id ASSIGN_OP str ';'
 	{}
 str: STRINGLITERAL
 	{}
@@ -79,7 +80,7 @@ base_stmt: assign_stmt | read_stmt | write_stmt | control_stmt
 
 assign_stmt: assign_expr ';'
 	{}
-assign_expr: id ':''=' expr
+assign_expr: id ASSIGN_OP expr
 	{}
 read_stmt: READ '(' id_list ')'';'
 	{}

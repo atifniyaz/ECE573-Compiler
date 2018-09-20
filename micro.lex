@@ -5,13 +5,15 @@
 LETTER  	[A-Za-z]
 DIGIT      	[0-9]
 QUOTE		\"
-OPERATOR    ":"|"+"|"-"|"*"|"/"|"="|"!"|"<"|">"|"("|")"|";"|","|"<"|">"
+OPERATOR    "+"|"-"|"*"|"/"|"="|"!"|"<"|">"|"("|")"|";"|","|"<"|">"
+AS_OP		":="
 COMMENT		--
 %%
 
 {COMMENT}[^\n]*
 
 {OPERATOR}    					{ return yytext[0]; }
+{AS_OP}							{ return ASSIGN_OP; }
 
 PROGRAM							{ return PROGRAM; }
 BEGIN							{ return _BEGIN; }
