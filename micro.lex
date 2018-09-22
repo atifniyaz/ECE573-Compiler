@@ -76,7 +76,12 @@ int main(int argc, char ** argv) {
 		struct SymbolTableStack * funcStk = NULL;
 
 		while(stack != NULL) {
-			pushStack(&sk, popStack(&stack));
+			struct SymbolTable * data = popStack(&stack);
+			if (isLegalSymbolTable(data)) {
+				pushStack(&sk, data);
+			} else {
+				return 0;
+			}
 		}
 		funcStk = sk;
 		
@@ -94,11 +99,7 @@ int main(int argc, char ** argv) {
 			if (data->childLen == 0) {
 				while (funcStk != NULL) {
 					struct SymbolTable * elData = popStack(&funcStk);
-					if (isLegalSymbolTable(elData)) {
-						printSymbolTable(elData);
-					} else {
-						return 0;
-					}
+					printSymbolTable(elData);
 				}
 			}
 		}

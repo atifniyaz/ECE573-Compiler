@@ -274,9 +274,12 @@ int isLegalSymbolTable(struct SymbolTable * table) {
 	if (id == NULL) { return 1; }
 	while (id->next != NULL) {
 		idCpy = id->next;
-		if (!strcmp(idCpy->id, id->id)) {
-			printf("DECLARATION ERROR %s\n", id->id);
-			return 0;
+		while (idCpy != NULL) {
+			if (!strcmp(idCpy->id, id->id)) {
+				printf("DECLARATION ERROR %s\n", id->id);
+				return 0;
+			}
+			idCpy = idCpy->next;
 		}
 		id = id->next;
 	}
