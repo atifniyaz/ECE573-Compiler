@@ -1,4 +1,5 @@
 %{
+#include "data.h"
 #include "micro.h"
 %}
 
@@ -6,14 +7,14 @@ LETTER  	[A-Za-z]
 DIGIT      	[0-9]
 QUOTE		\"
 OPERATOR    "+"|"-"|"*"|"/"|"="|"!"|"<"|">"|"("|")"|";"|","|"<"|">"
-AS_OP		":="
+ASSIGN_OP	":="
 COMMENT		--
 %%
 
 {COMMENT}[^\n]*
 
 {OPERATOR}    					{ return yytext[0]; }
-{AS_OP}							{ return ASSIGN_OP; }
+{ASSIGN_OP}						{ return ASSIGN_OP; }
 
 PROGRAM							{ return PROGRAM; }
 BEGIN							{ return _BEGIN; }
@@ -40,9 +41,15 @@ BREAK							{ return BREAK; }
 
 {DIGIT}+                      	{ return INTLITERAL; }
 
-{QUOTE}[^"]*{QUOTE}				{ return STRINGLITERAL; }
+{QUOTE}[^"]*{QUOTE}				{ 
+									yylval.strData = strdup(yytext);
+									return STRINGLITERAL; 
+								}
 
-{LETTER}({LETTER}|{DIGIT})*    	{ return IDENTIFIER; }
+{LETTER}({LETTER}|{DIGIT})*    	{ 
+									yylval.strData = strdup(yytext);
+									return IDENTIFIER; 
+								}
 
 {DIGIT}*"."{DIGIT}+				{ return FLOATLITERAL; }
 
@@ -65,7 +72,36 @@ int main(int argc, char ** argv) {
 	if(yyparse()) {
 		printf("Not Accepted");
 	} else {
-		printf("Accepted");
+		struct SymbolTableStack * sk = NULL;
+		struct SymbolTableStack * funcStk = NULL;
+
+		while(stack != NULL) {
+			pushStack(&sk, popStack(&stack));
+		}
+		funcStk = sk;
+		
+		while(funcStk->next != NULL) {
+			funcStk = funcStk->next;
+		}
+
+		printSymbolTable(funcStk->value);
+		funcStk = NULL;
+
+		while(sk->next != NULL) {
+			struct SymbolTable * data = popStack(&sk);
+			pushStack(&funcStk, data);
+			
+			if (data->childLen == 0) {
+				while (funcStk != NULL) {
+					struct SymbolTable * elData = popStack(&funcStk);
+					if (isLegalSymbolTable(elData)) {
+						printSymbolTable(elData);
+					} else {
+						return 0;
+					}
+				}
+			}
+		}
 	}
 	return 0;
 }
