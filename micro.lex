@@ -99,6 +99,7 @@ int main(int argc, char ** argv) {
 			if (data->childLen == 0) {
 				while (funcStk != NULL) {
 					struct SymbolTable * elData = popStack(&funcStk);
+					printf("\n");
 					printSymbolTable(elData);
 				}
 			}

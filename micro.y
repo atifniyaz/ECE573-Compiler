@@ -65,7 +65,7 @@ pgm_body: decl func_declarations
 	{
 		$$ = $1;
 	}
-decl: { $$ = NULL } | string_decl decl 
+decl: { $$ = NULL; } | string_decl decl 
 	{
 		$$ = $1;
 		struct Identifier * data = $1;
@@ -276,7 +276,7 @@ int isLegalSymbolTable(struct SymbolTable * table) {
 		idCpy = id->next;
 		while (idCpy != NULL) {
 			if (!strcmp(idCpy->id, id->id)) {
-				printf("DECLARATION ERROR %s\n", id->id);
+				printf("DECLARATION ERROR %s", id->id);
 				return 0;
 			}
 			idCpy = idCpy->next;
@@ -314,7 +314,6 @@ void printSymbolTable(struct SymbolTable * table) {
 
 		id = id->next;
 	}
-	printf("\n");
 }
 
 void printStack() {
