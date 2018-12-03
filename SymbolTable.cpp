@@ -29,6 +29,18 @@ bool SymbolTable::isLegal() {
 	return true;
 }
 
+Identifier * SymbolTable::findIdentifier(string name) {
+	Identifier * currId = this->ids;
+	while (currId != NULL) {
+		if(!currId->name.compare(name)) {
+			return currId;
+			cout << endl;
+		}
+		currId = currId->next;
+	}
+	return NULL;
+}
+
 void SymbolTable::print() {
 	Identifier * currId = this->ids;
 	cout << "Symbol table " << this->name << endl;

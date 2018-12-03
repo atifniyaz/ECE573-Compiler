@@ -3,6 +3,8 @@
 #include<iostream>
 
 #include "AST.hpp"
+#include "Identifier.hpp"
+#include "SymbolTableStack.hpp"
 #include "CodeObject.hpp"
 
 using namespace std;
@@ -11,12 +13,20 @@ using namespace ast;
 
 int temporaryCnt = 0;
 
+extern SymbolTableStack * stackTable;
+
 void tac::CodeObject::addLine(string line) {
 	this->codeList.push_back(line);
 }
 
 string tac::CodeObject::getType() {
-	return this->type == ast::Type::INT_VAL ? "I " : "F ";
+	if (this->type == ast::Type::INT_VAL) {
+		return "I ";
+	} else if (this->type == ast::Type::FLOAT_VAL) {
+		return "F ";
+	} else {
+		return "S ";
+	}
 }
 
 CodeObject * tac::merge(CodeObject * left, CodeObject * right) {
@@ -47,10 +57,6 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		right = buildTAC(node->right);
 	}
 
-	if (node->left != NULL && node->right != NULL) {
-		cout << left->getType() << ":" << right->getType() << endl;
-	}
-
 	CodeObject * merged = tac::merge(left, right);
 
 	if (node->type == ast::Type::INT_VAL ||
@@ -64,9 +70,9 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		// left is var assign
 		// right is expr
 		ASTNode_Identifier * leftNode = (ASTNode_Identifier *) node->left;
-		string tac = ";STORE" + right->getType() + "!T" + to_string(right->temporary) + " " + leftNode->idName;
+		string tac = "move" " r" + to_string(right->temporary) + " " + leftNode->idName;
 		merged->addLine(tac);
-		merged->type = node->right->type;
+		merged->type = node->left->type;
 
 	} else if (node->type == ast::Type::MUL_EXPR || 
 		node->type == ast::Type::ADD_EXPR) {
@@ -98,9 +104,9 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 			tacPrefix = exprNode->isAddition ? ";ADD" : ";SUB";
 		}
 		if (left->type != right->type) {
-			valType = ast::Type::INT_VAL;
+			valType = ast::Type::FLOAT_VAL;
 		} else {
-			valType = ast::Type::INT_VAL;
+			valType = left->type;
 		}
 
 		merged->type = valType;
@@ -110,6 +116,22 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 
 		temporaryCnt++;
 	} else if (node->type == ast::Type::ID_FIER) {
+		ASTNode_Identifier * idNode = (ASTNode_Identifier *) node;
+		Identifier * id = stackTable->findIdentifier(idNode->idName);	
+
+		if (id != NULL) {
+			string idType = id->getType();
+
+			if (!idType.compare("INT")) {
+				merged->type = ast::Type::INT_VAL;
+			} else if (!idType.compare("FLOAT")) {
+				merged->type = ast::Type::FLOAT_VAL;
+			} else {
+				merged->type = ast::Type::STR_VAL;
+			}
+		} else {
+			// Strange enough, this identifier doesn't exist???
+		}
 	}
 	return merged;
 }

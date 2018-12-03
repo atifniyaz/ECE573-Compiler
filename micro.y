@@ -20,6 +20,7 @@ using namespace std;
 using namespace bu;
 
 extern SymbolTableStack * stackTable;
+
 extern tac::CodeObject * masterCode;
 
 int blockCnt = 1;
@@ -72,7 +73,7 @@ int blockCnt = 1;
 %%
 
 program: PROGRAM id _BEGIN pgm_body END {
-	masterCode->addLine(";RET");
+	masterCode->addLine("sys halt");
 }
 
 id: IDENTIFIER 
@@ -181,7 +182,18 @@ write_stmt: WRITE '(' id_list ')'';'
 		LLString * list = $3;
 		while (list != NULL) {
 			string idName = list->value;
-			masterCode->addLine(";WRITEI " + idName);
+			Identifier * id = stackTable->findIdentifier(idName);
+			string prefix;
+
+			if (!id->getType().compare("INT")) {
+				prefix = "i ";
+			} else if(!id->getType().compare("FLOAT")) {
+				prefix = "r ";
+			} else {
+				prefix = "s ";
+			}
+
+			masterCode->addLine("sys write" + prefix + idName);
 			list = list->next;
 		}
 	}

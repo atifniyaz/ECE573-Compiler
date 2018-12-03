@@ -8,7 +8,7 @@ using namespace std;
 namespace ast {
 
 	enum class Type {
-		ADD_EXPR, MUL_EXPR, INT_VAL, FLOAT_VAL, ID_FIER, ASSIGNMENT
+		ADD_EXPR, MUL_EXPR, INT_VAL, FLOAT_VAL, ID_FIER, ASSIGNMENT, STR_VAL
 	};
 
 	class ASTNode {
@@ -46,7 +46,7 @@ namespace ast {
 
 			void onPrint();
 			string getTAC() {
-				return ";STOREI " + to_string(value) + " !T";
+				return "move " + to_string(value) + " r";
 			}
 	};
 
@@ -57,7 +57,7 @@ namespace ast {
 
 			void onPrint();
 			string getTAC() {
-				return ";STOREF " + to_string(value) + " !T";
+				return "move " + to_string(value) + " r";
 			}
 	};
 

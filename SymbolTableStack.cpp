@@ -63,3 +63,12 @@ void SymbolTableStack::print() {
 bool SymbolTableStack::isEmpty() {
 	return this->head == NULL;
 }
+
+Identifier * SymbolTableStack::findIdentifier(string name) {
+	Identifier * idId = NULL;
+	SymbolTableHolder * head = this->head;
+	while (idId == NULL && head != NULL) {
+		idId = head->value->findIdentifier(name);
+	}
+	return idId;
+}

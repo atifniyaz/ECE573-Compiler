@@ -32,6 +32,7 @@ public:
 	SymbolTable * poll();
 
 	void print();
+	Identifier * findIdentifier(string name);
 	bool isEmpty();
 };
 

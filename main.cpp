@@ -11,6 +11,7 @@
 
 SymbolTableStack * stackTable = new SymbolTableStack();
 tac::CodeObject * masterCode = new tac::CodeObject();
+tac::CodeObject * tinyCode = new tac::CodeObject();
 
 extern FILE * yyin;
 

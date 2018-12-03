@@ -8,7 +8,7 @@ extern SymbolTableStack * stackTable;
 extern int blockCnt;
 
 Identifier * buildNumberId(string type) {
-	if (type.compare("FLOAT")) {
+	if (!type.compare("FLOAT")) {
 		return new IdFloat();
 	} else {
 		return new IdInteger();
