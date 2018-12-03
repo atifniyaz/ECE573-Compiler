@@ -1,10 +1,12 @@
 %{
 #include<string>
 
+#include "AST.hpp"
 #include "Identifier.hpp"
 #include "SymbolTable.hpp"
 #include "SymbolTableStack.hpp"
 #include "LLString.hpp"
+#include "BisonUtility.hpp"
 
 int yylex();
 void yyerror(char *s);
@@ -12,9 +14,8 @@ void yyerror(char *s);
 extern "C" int yyparse();
 extern "C" FILE *yyin;
 
-void addControlDecl(Identifier * id);
- 
 using namespace std;
+using namespace bu;
 
 extern SymbolTableStack * stackTable;
 
@@ -26,10 +27,16 @@ int blockCnt = 1;
 %union {
 	Identifier * identifier;
 	LLString * stringList;
+	ast::ASTNode * astNode;
+	int intVal;
+	float flVal;
 }
 
 %type <identifier> string_decl var_decl decl param_decl param_decl_list param_decl_tail
 %type <stringList> id_list id_tail var_type id str
+%type <astNode> addop mulop expr expr_prefix factor factor_prefix post_fix_expr primary assign_expr
+%type <intVal> intval
+%type <flVal> fltval
 
 %token PROGRAM
 %token _BEGIN
@@ -67,64 +74,32 @@ id: IDENTIFIER
 	{}
 pgm_body: decl 
 	{
-		SymbolTable * table = new SymbolTable("GLOBAL", $1, Type::GLOBAL);
-		stackTable->enqueue(table);
+		stackTable->enqueue(new SymbolTable("GLOBAL", $1, Type::GLOBAL));
 	}
 	func_declarations 
 	
 decl: { $$ = NULL; } | string_decl decl 
 	{
-		Identifier * id = $1;
-		$$ = $1;
-		id->getLast()->next = $2;
+		$$ = buildDecl($1, $2);
 	}
 	  | var_decl decl
 	{
-		Identifier * id = $1;
-		$$ = $1;
-		id->getLast()->next = $2;
+		$$ = buildDecl($1, $2);
 	}
 
 string_decl: STRING id ASSIGN_OP str ';'
 	{ 
-		IdString * idString = new IdString();
-		idString->name = ($2)->value;
-		idString->value = ($4)->value;
-		$$ = idString;
+		$$ = buildString($2, $4);
 	}
 str: STRINGLITERAL
 	{}
-
+intval: INTLITERAL
+	{}
+fltval: FLOATLITERAL
+	{}
 var_decl: var_type id_list ';' 
 	{
-		Identifier * head;
-		string type = ($1)->value;
-
-		if (!type.compare("FLOAT")) {
-			head = new IdFloat();
-		} else {
-			head = new IdInteger();
-		}
-
-		Identifier * id = head;
-		LLString * stringList = $2;
-
-		while(stringList != NULL) {
-			string idName = stringList->value;
-			
-			id->name = idName;
-			stringList = stringList->next;
-
-			if (stringList != NULL) {
-				if (!type.compare("FLOAT")) {
-					id->next = new IdFloat();
-				} else {
-					id->next = new IdInteger();
-				}
-				id = id->next;
-			}
-		}
-		$$ = head;
+		$$ = buildDeclFromList($1, $2);
 	}
 var_type: FLOAT { $$ = new LLString("FLOAT"); } | 
 		  INT   { $$ = new LLString("INT"); }
@@ -166,20 +141,9 @@ func_declarations: | func_decl func_declarations
 	{
 
 	}
-func_decl: FUNCTION any_type id '(' param_decl_list ')' _BEGIN decl 
-	{
-		Identifier * parms = $5;
-		if($5 != NULL) {
-			while(parms->next != NULL) {
-				parms = parms->next;
-			}
-			parms->next = $8;
-			parms = $5;
-		} else {
-			parms = $8;
-		}
-		stackTable->enqueue(new SymbolTable(($3)->value, parms, Type::FUNC));
-	} stmt_list END
+func_decl: FUNCTION any_type id '(' param_decl_list ')' _BEGIN 
+	decl { addFuncDecl($8, $5, $3->value); } 
+	stmt_list END
 
 stmt_list: | stmt stmt_list
 	{}
@@ -191,7 +155,13 @@ base_stmt: assign_stmt | read_stmt | write_stmt | control_stmt
 assign_stmt: assign_expr ';'
 	{}
 assign_expr: id ASSIGN_OP expr
-	{}
+	{
+		$$ = new ast::ASTNode_Assignment();
+		$$->left = new ast::ASTNode_Identifier($1->value);
+		$$->right = $3;
+		$$->print(0);
+		cout << endl;
+	}
 read_stmt: READ '(' id_list ')'';'
 	{}
 write_stmt: WRITE '(' id_list ')'';'
@@ -200,27 +170,63 @@ return_stmt: RETURN expr ';'
 	{}
 
 expr: expr_prefix factor
-	{}
-expr_prefix: | expr_prefix factor addop
-	{}
+	{
+		if ($1 == NULL) {
+			$$ = $2;
+		} else {
+			$1->right = $2;
+			$$ = $1;
+		}
+	}
+expr_prefix: { $$ = NULL; } | expr_prefix factor addop
+	{
+		if($1 == NULL) {
+			$3->left = $2;
+		} else {
+			$1->right = $2;
+			$3->left = $1;
+		}
+		$$ = $3;
+	}
 factor: factor_prefix post_fix_expr
-	{}
-factor_prefix: | factor_prefix post_fix_expr mulop
-	{}
-post_fix_expr: primary | call_expr
-	{}
+	{
+		if ($1 == NULL) {
+			$$ = $2;
+		} else {
+			$1->right = $2;
+			$$ = $1;
+		}
+	}
+factor_prefix: { $$ = NULL; } | factor_prefix post_fix_expr mulop
+	{
+		if ($1 == NULL) {
+			$3->left = $2;
+		} else {
+			$1->right = $2;
+			$3->left = $1;
+		}
+		$$ = $3;
+	}
+post_fix_expr: primary { $$ = $1; } | 
+	call_expr { $$ = NULL; }
 call_expr: id '(' expr_list ')'
 	{}
-expr_list: | expr expr_list_tail
+expr_list: { } | expr expr_list_tail
 	{}
 expr_list_tail: | ',' expr expr_list_tail
 	{}
-primary: '(' expr ')' | id | INTLITERAL | FLOATLITERAL
-	{}
-addop: '+' | '-'
-	{}
-mulop: '*' | '/'
-	{}
+primary: '(' expr ')' { $$ = $2; } | 
+	id { 
+		$$ = new ast::ASTNode_Identifier($1->value);
+	} | intval {
+		$$ = new ast::ASTNode_INT($1);
+	} | fltval {
+		$$ = new ast::ASTNode_FLOAT($1);
+	}
+addop: '+' { $$ = new ast::ASTNode_AddExpr(true); } | 
+	   '-' { $$ = new ast::ASTNode_AddExpr(false); }
+mulop: '*' { $$ = new ast::ASTNode_MulExpr(true); } | 
+	   '/' { $$ = new ast::ASTNode_MulExpr(false); }
 
 if_stmt: 
 	IF '(' cond ')' decl { addControlDecl($5); } stmt_list else_part ENDIF
@@ -245,8 +251,3 @@ for_stmt: FOR '(' init_stmt ';' cond ';' incr_stmt ')' decl stmt_list ENDFOR
 	{}
 
 %%
-
-void addControlDecl(Identifier * id) {
-	stackTable->enqueue(new SymbolTable("BLOCK " + to_string(blockCnt), id, Type::CONTROL_STMT));
-	blockCnt++;
-}

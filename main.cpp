@@ -1,5 +1,6 @@
 #include<iostream>
 
+#include "AST.hpp"
 #include "Identifier.hpp"
 #include "SymbolTable.hpp"
 #include "SymbolTableStack.hpp"

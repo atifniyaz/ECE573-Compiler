@@ -1,5 +1,6 @@
 %{
 
+#include "AST.hpp"
 #include "LLString.hpp"
 #include "Identifier.hpp"
 #include "SymbolTable.hpp"
@@ -45,7 +46,10 @@ ENDFOR							{ return ENDFOR; }
 CONTINUE						{ return CONTINUE; }
 BREAK							{ return BREAK; }
 
-{DIGIT}+                      	{ return INTLITERAL; }
+{DIGIT}+                      	{ 
+									yylval.intVal = atoi(yytext);
+									return INTLITERAL; 
+								}
 
 {QUOTE}[^"]*{QUOTE}				{ 
 									yylval.stringList = new LLString(strdup(yytext));
@@ -57,7 +61,10 @@ BREAK							{ return BREAK; }
 									return IDENTIFIER; 
 								}
 
-{DIGIT}*"."{DIGIT}+				{ return FLOATLITERAL; }
+{DIGIT}*"."{DIGIT}+				{ 
+									yylval.flVal = atof(yytext);
+									return FLOATLITERAL; 
+								}
 
 .|\n
 
