@@ -1,6 +1,12 @@
 %{
-#include "data.h"
+
+#include "LLString.hpp"
+#include "Identifier.hpp"
+#include "SymbolTable.hpp"
+#include "SymbolTableStack.hpp"
+
 #include "micro.h"
+
 %}
 
 LETTER  	[A-Za-z]
@@ -42,12 +48,12 @@ BREAK							{ return BREAK; }
 {DIGIT}+                      	{ return INTLITERAL; }
 
 {QUOTE}[^"]*{QUOTE}				{ 
-									yylval.strData = strdup(yytext);
+									yylval.stringList = new LLString(strdup(yytext));
 									return STRINGLITERAL; 
 								}
 
 {LETTER}({LETTER}|{DIGIT})*    	{ 
-									yylval.strData = strdup(yytext);
+									yylval.stringList = new LLString(strdup(yytext));
 									return IDENTIFIER; 
 								}
 
@@ -56,56 +62,3 @@ BREAK							{ return BREAK; }
 .|\n
 
 %%
-
-int main(int argc, char ** argv) {
-	if (argc >= 2) {
-		FILE * fp = fopen(argv[1], "r");
-		if (fp == NULL) {
-			return -1;
-		} else {
-			yyin = fp;
-		}
-	} else {
-		return -1;
-	}
-	
-	if(yyparse()) {
-		printf("Not Accepted");
-	} else {
-		struct SymbolTableStack * sk = NULL;
-		struct SymbolTableStack * funcStk = NULL;
-
-		while(stack != NULL) {
-			struct SymbolTable * data = popStack(&stack);
-			if (isLegalSymbolTable(data)) {
-				pushStack(&sk, data);
-			} else {
-				return 0;
-			}
-		}
-		funcStk = sk;
-		
-		while(funcStk->next != NULL) {
-			funcStk = funcStk->next;
-		}
-
-		printSymbolTable(funcStk->value);
-		funcStk = NULL;
-
-		while(sk->next != NULL) {
-			struct SymbolTable * data = popStack(&sk);
-			pushStack(&funcStk, data);
-			
-			if (data->childLen == 0) {
-				while (funcStk != NULL) {
-					struct SymbolTable * elData = popStack(&funcStk);
-					printf("\n");
-					printSymbolTable(elData);
-				}
-			}
-		}
-	}
-	return 0;
-}
-
-void yyerror(char const * s) { }
