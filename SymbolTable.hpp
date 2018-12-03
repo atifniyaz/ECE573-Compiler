@@ -8,15 +8,17 @@
 
 using namespace std;
 
-enum class Type { GLOBAL, FUNC, CONTROL_STMT };
+namespace st {
+	enum class Type { GLOBAL, FUNC, CONTROL_STMT };
+}
 
 class SymbolTable {
 public:
 	string name;
 	Identifier * ids;
-	Type type;
+	st::Type type;
 
-	SymbolTable(string name, Identifier * ids, Type type);
+	SymbolTable(string name, Identifier * ids, st::Type type);
 
 	bool isLegal();
 	void print();

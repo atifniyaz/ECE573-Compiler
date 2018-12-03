@@ -1,6 +1,7 @@
 #include<iostream>
 
 #include "AST.hpp"
+#include "CodeObject.hpp"
 #include "Identifier.hpp"
 #include "SymbolTable.hpp"
 #include "SymbolTableStack.hpp"
@@ -9,6 +10,8 @@
 #include "micro.h"
 
 SymbolTableStack * stackTable = new SymbolTableStack();
+tac::CodeObject * masterCode = new tac::CodeObject();
+
 extern FILE * yyin;
 
 extern "C" int yyparse();
@@ -31,6 +34,12 @@ int main(int argc, char ** argv) {
 		cout << "Not Accepted";
 	} else {
 		parseSymbolTable();
+
+		vector<string> lines = masterCode->codeList;
+
+		for(int i = 0; i < lines.size(); i++) {
+			cout << lines[i] << endl;
+		}
 	}
 	return 0;
 }
@@ -49,8 +58,8 @@ void parseSymbolTable() {
 			return;
 		}
 	}
-
+/*
 	while (!holder->isEmpty()) {
 		holder->poll()->print();
-	}
+	} */
 }

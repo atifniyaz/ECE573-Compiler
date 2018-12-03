@@ -18,20 +18,12 @@ void printDepth(int depth) {
 
 void ast::ASTNode::print(int depth) {
 	if (this->left != NULL) {
-		printDepth(depth + 1);
-		cout << "LEFT" << endl;
 		this->left->print(depth + 1);
 	}
 	if (this->right != NULL) {
-		printDepth(depth + 1);
-		cout << "RIGHT" << endl;
 		this->right->print(depth + 1);
 	}
-
-	printDepth(depth);
 	this->onPrint();
-	cout << endl;
-
 }
 
 ast::ASTNode_AddExpr::ASTNode_AddExpr(bool isAddition) {
@@ -77,6 +69,10 @@ ast::ASTNode_Identifier::ASTNode_Identifier(string idName) {
 
 void ast::ASTNode_Identifier::onPrint() {
 	cout << this->idName << " ";
+}
+
+ast::ASTNode_Assignment::ASTNode_Assignment() {
+	this->type = ast::Type::ASSIGNMENT;
 }
 
 void ast::ASTNode_Assignment::onPrint() {

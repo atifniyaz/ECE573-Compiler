@@ -1,7 +1,9 @@
 %{
 #include<string>
+#include<vector>
 
 #include "AST.hpp"
+#include "CodeObject.hpp"
 #include "Identifier.hpp"
 #include "SymbolTable.hpp"
 #include "SymbolTableStack.hpp"
@@ -18,6 +20,7 @@ using namespace std;
 using namespace bu;
 
 extern SymbolTableStack * stackTable;
+extern tac::CodeObject * masterCode;
 
 int blockCnt = 1;
 %}
@@ -68,13 +71,15 @@ int blockCnt = 1;
 
 %%
 
-program: PROGRAM id _BEGIN pgm_body END 
+program: PROGRAM id _BEGIN pgm_body END {
+	masterCode->addLine(";RET");
+}
 
 id: IDENTIFIER 
 	{}
 pgm_body: decl 
 	{
-		stackTable->enqueue(new SymbolTable("GLOBAL", $1, Type::GLOBAL));
+		stackTable->enqueue(new SymbolTable("GLOBAL", $1, st::Type::GLOBAL));
 	}
 	func_declarations 
 	
@@ -159,13 +164,27 @@ assign_expr: id ASSIGN_OP expr
 		$$ = new ast::ASTNode_Assignment();
 		$$->left = new ast::ASTNode_Identifier($1->value);
 		$$->right = $3;
-		$$->print(0);
-		cout << endl;
+
+		masterCode = tac::merge(masterCode, tac::buildTAC($$));
 	}
 read_stmt: READ '(' id_list ')'';'
-	{}
+	{
+		LLString * list = $3;
+		while (list != NULL) {
+			string idName = list->value;
+			masterCode->addLine(";READI " + idName);
+			list = list->next;
+		}
+	}
 write_stmt: WRITE '(' id_list ')'';'
-	{}
+	{
+		LLString * list = $3;
+		while (list != NULL) {
+			string idName = list->value;
+			masterCode->addLine(";WRITEI " + idName);
+			list = list->next;
+		}
+	}
 return_stmt: RETURN expr ';'
 	{}
 

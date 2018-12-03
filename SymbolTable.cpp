@@ -1,6 +1,6 @@
 #include "SymbolTable.hpp"
 
-SymbolTable::SymbolTable(string name, Identifier * ids, Type type) {
+SymbolTable::SymbolTable(string name, Identifier * ids, st::Type type) {
 	this->name = name;
 	this->ids = ids;
 	this->type = type;

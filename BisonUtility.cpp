@@ -16,7 +16,7 @@ Identifier * buildNumberId(string type) {
 }
 
 void bu::addControlDecl(Identifier * id) {
-	stackTable->enqueue(new SymbolTable("BLOCK " + to_string(blockCnt), id, Type::CONTROL_STMT));
+	stackTable->enqueue(new SymbolTable("BLOCK " + to_string(blockCnt), id, st::Type::CONTROL_STMT));
 	blockCnt++;
 }
 
@@ -28,7 +28,7 @@ void bu::addFuncDecl(Identifier * bodyDecl, Identifier * argsDecl, string name) 
 	} else {
 		decl = bodyDecl;
 	}
-	stackTable->enqueue(new SymbolTable(name, decl, Type::FUNC));
+	stackTable->enqueue(new SymbolTable(name, decl, st::Type::FUNC));
 }
 
 Identifier * bu::buildDecl(Identifier * parent, Identifier * child) {

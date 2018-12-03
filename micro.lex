@@ -1,6 +1,7 @@
 %{
 
 #include "AST.hpp"
+#include "CodeObject.hpp"
 #include "LLString.hpp"
 #include "Identifier.hpp"
 #include "SymbolTable.hpp"

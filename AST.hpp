@@ -8,7 +8,7 @@ using namespace std;
 namespace ast {
 
 	enum class Type {
-		ADD_EXPR, MUL_EXPR, INT_VAL, FLOAT_VAL, ID_FIER
+		ADD_EXPR, MUL_EXPR, INT_VAL, FLOAT_VAL, ID_FIER, ASSIGNMENT
 	};
 
 	class ASTNode {
@@ -19,6 +19,7 @@ namespace ast {
 		Type type;
 
 		void print(int depth);
+		virtual string getTAC() { return ""; }
 		virtual void onPrint() = 0;
 	};
 
@@ -44,6 +45,9 @@ namespace ast {
 			int value;
 
 			void onPrint();
+			string getTAC() {
+				return ";STOREI " + to_string(value) + " !T";
+			}
 	};
 
 	class ASTNode_FLOAT : public ASTNode {
@@ -52,6 +56,9 @@ namespace ast {
 			float value;
 
 			void onPrint();
+			string getTAC() {
+				return ";STOREF " + to_string(value) + " !T";
+			}
 	};
 
 	class ASTNode_Identifier : public ASTNode {
@@ -60,10 +67,12 @@ namespace ast {
 			string idName;
 
 			void onPrint();
+
 	};
 
 	class ASTNode_Assignment : public ASTNode {
 		public:
+			ASTNode_Assignment();
 			void onPrint();
 	};
 }
