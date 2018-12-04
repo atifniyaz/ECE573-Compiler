@@ -46,7 +46,7 @@ namespace ast {
 
 			void onPrint();
 			string getTAC() {
-				return "move " + to_string(value) + " r";
+				return to_string(value);
 			}
 	};
 
@@ -57,7 +57,7 @@ namespace ast {
 
 			void onPrint();
 			string getTAC() {
-				return "move " + to_string(value) + " r";
+				return to_string(value);
 			}
 	};
 

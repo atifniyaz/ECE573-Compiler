@@ -15,17 +15,24 @@ int temporaryCnt = 0;
 
 extern SymbolTableStack * stackTable;
 
-void tac::CodeObject::addLine(string line) {
+tac::CodeLine::CodeLine(string arg1, string arg2, string arg3, string arg4) {
+	this->arg1 = arg1;
+	this->arg2 = arg2;
+	this->arg3 = arg3;
+	this->arg4 = arg4;
+}
+
+void tac::CodeObject::addLine(CodeLine * line) {
 	this->codeList.push_back(line);
 }
 
 string tac::CodeObject::getType() {
 	if (this->type == ast::Type::INT_VAL) {
-		return "I ";
+		return "i";
 	} else if (this->type == ast::Type::FLOAT_VAL) {
-		return "F ";
+		return "r";
 	} else {
-		return "S ";
+		return "s";
 	}
 }
 
@@ -61,7 +68,13 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 
 	if (node->type == ast::Type::INT_VAL ||
 		node->type == ast::Type::FLOAT_VAL) {
-		merged->addLine(node->getTAC() + to_string(temporaryCnt));
+
+		merged->addLine(new tac::CodeLine(
+			"move",
+			node->getTAC(),
+			"r" + to_string(temporaryCnt), ""
+		));
+
 		merged->temporary = temporaryCnt;
 		merged->type = node->type;
 
@@ -70,8 +83,12 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		// left is var assign
 		// right is expr
 		ASTNode_Identifier * leftNode = (ASTNode_Identifier *) node->left;
-		string tac = "move" " r" + to_string(right->temporary) + " " + leftNode->idName;
-		merged->addLine(tac);
+		merged->addLine(new tac::CodeLine(
+			"move",
+			"r" + to_string(right->temporary),
+			leftNode->idName,
+			""
+		));
 		merged->type = node->left->type;
 
 	} else if (node->type == ast::Type::MUL_EXPR || 
@@ -86,22 +103,22 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 			ASTNode_Identifier * leftNode = (ASTNode_Identifier *) node->left;
 			leftStorage = leftNode->idName;
 		} else {
-			leftStorage = "!T" + to_string(left->temporary);
+			leftStorage = "r" + to_string(left->temporary);
 		}
 
 		if (node->right->type == ast::Type::ID_FIER) {
 			ASTNode_Identifier * rightNode = (ASTNode_Identifier *) node->right;
 			rightStorage = rightNode->idName;
 		} else {
-			rightStorage = "!T" + to_string(right->temporary);
+			rightStorage = "r" + to_string(right->temporary);
 		}
 
 		if (node->type == ast::Type::MUL_EXPR) {
 			ASTNode_MulExpr * exprNode = (ASTNode_MulExpr *) node;
-			tacPrefix = exprNode->isMultiplication ? ";MUL" : ";DIV";
+			tacPrefix = exprNode->isMultiplication ? "mul" : "div";
 		} else {
 			ASTNode_AddExpr * exprNode = (ASTNode_AddExpr *) node;
-			tacPrefix = exprNode->isAddition ? ";ADD" : ";SUB";
+			tacPrefix = exprNode->isAddition ? "add" : "sub";
 		}
 		if (left->type != right->type) {
 			valType = ast::Type::FLOAT_VAL;
@@ -110,8 +127,16 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		}
 
 		merged->type = valType;
-		string tac = tacPrefix + merged->getType() + leftStorage + " " + rightStorage + " !T" + to_string(temporaryCnt);
-		merged->addLine(tac);
+		merged->addLine(new tac::CodeLine(
+			"move",
+			leftStorage,
+			"r" + to_string(temporaryCnt), ""
+		)); // MUL A B R0 (MOV A RN)
+		merged->addLine(new tac::CodeLine(
+			tacPrefix + merged->getType(),
+			rightStorage,
+			"r" + to_string(temporaryCnt), ""
+		)); // MUL A B RO (MUL B RN)
 		merged->temporary = temporaryCnt;
 
 		temporaryCnt++;

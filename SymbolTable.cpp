@@ -57,3 +57,16 @@ void SymbolTable::print() {
 	}
 	cout << endl;
 }
+
+void SymbolTable::printVar() {
+	Identifier * currId = this->ids;
+	while (currId != NULL) {
+
+		if (!currId->getType().compare("STRING")) {
+			cout << "str " << currId->name << " " << ((IdString *) currId)->value << endl;
+		} else {
+			cout << "var " << currId->name << endl;
+		} 
+		currId = currId->next;
+	}
+}

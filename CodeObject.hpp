@@ -11,13 +11,25 @@ using namespace ast;
 
 namespace tac {
 
+	class CodeLine {
+	public:
+		CodeLine(string arg1, string arg2, string arg3, string arg4);
+		string arg1;
+		string arg2;
+		string arg3;
+		string arg4;
+		string stringify() {
+			return arg1 + " " + arg2 + " " + arg3 + " " + arg4;
+		}
+	};
+
 	class CodeObject {
 	public:
-		vector<string> codeList;
+		vector<CodeLine *> codeList;
 		int temporary;
 		ast::Type type; // more specifically for value type (int, float, str)
 
-		void addLine(string line);
+		void addLine(CodeLine * line);
 		string getType();
 	};
 

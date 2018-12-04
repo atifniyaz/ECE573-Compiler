@@ -22,6 +22,7 @@ public:
 
 	bool isLegal();
 	void print();
+	void printVar();
 	Identifier * findIdentifier(string name);
 };
 

@@ -36,10 +36,10 @@ int main(int argc, char ** argv) {
 	} else {
 		parseSymbolTable();
 
-		vector<string> lines = masterCode->codeList;
+		vector<tac::CodeLine *> lines = masterCode->codeList;
 
 		for(int i = 0; i < lines.size(); i++) {
-			cout << lines[i] << endl;
+			cout << lines[i]->stringify() << endl;
 		}
 	}
 	return 0;
@@ -59,8 +59,8 @@ void parseSymbolTable() {
 			return;
 		}
 	}
-/*
+
 	while (!holder->isEmpty()) {
-		holder->poll()->print();
-	} */
+		holder->poll()->printVar();
+	}
 }

@@ -73,7 +73,7 @@ int blockCnt = 1;
 %%
 
 program: PROGRAM id _BEGIN pgm_body END {
-	masterCode->addLine("sys halt");
+	masterCode->addLine(new tac::CodeLine("sys halt", "", "", ""));
 }
 
 id: IDENTIFIER 
@@ -173,7 +173,20 @@ read_stmt: READ '(' id_list ')'';'
 		LLString * list = $3;
 		while (list != NULL) {
 			string idName = list->value;
-			masterCode->addLine(";READI " + idName);
+			Identifier * id = stackTable->findIdentifier(idName);
+			string prefix;
+
+			if (!id->getType().compare("INT")) {
+				prefix = "i";
+			} else if(!id->getType().compare("FLOAT")) {
+				prefix = "r";
+			} else {
+				prefix = "s";
+			}
+
+			masterCode->addLine(new tac::CodeLine(
+				"sys read" + prefix,
+				idName, "", ""));
 			list = list->next;
 		}
 	}
@@ -186,14 +199,16 @@ write_stmt: WRITE '(' id_list ')'';'
 			string prefix;
 
 			if (!id->getType().compare("INT")) {
-				prefix = "i ";
+				prefix = "i";
 			} else if(!id->getType().compare("FLOAT")) {
-				prefix = "r ";
+				prefix = "r";
 			} else {
-				prefix = "s ";
+				prefix = "s";
 			}
 
-			masterCode->addLine("sys write" + prefix + idName);
+			masterCode->addLine(new tac::CodeLine(
+				"sys write" + prefix, 
+				idName, "", ""));
 			list = list->next;
 		}
 	}
