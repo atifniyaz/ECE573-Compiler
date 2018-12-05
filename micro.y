@@ -27,6 +27,8 @@ int blockCnt = 1;
 int labelCnt = 0;
 int outCnt = 0;
 int whileCnt = 0;
+int forCnt = 0;
+int incrCnt = 0;
 
 %}
 
@@ -44,7 +46,7 @@ int whileCnt = 0;
 %type <identifier> string_decl var_decl decl param_decl param_decl_list param_decl_tail
 %type <stringList> id_list id_tail var_type id str
 %type <astNode> addop mulop expr expr_prefix factor factor_prefix post_fix_expr primary compop cond 
-%type <codeObject> stmt stmt_list base_stmt if_stmt loop_stmt assign_stmt read_stmt write_stmt control_stmt assign_expr else_part while_stmt
+%type <codeObject> stmt stmt_list base_stmt if_stmt loop_stmt assign_stmt read_stmt write_stmt control_stmt assign_expr else_part while_stmt init_stmt incr_stmt for_stmt
 %type <intVal> intval
 %type <flVal> fltval
 
@@ -332,8 +334,6 @@ if_stmt:
 			out->addLine(new tac::CodeLine(
 				"label", "OUT_" + to_string(outCnt), "", ""
 			));
-			outCnt++;
-			labelCnt++;
 
 			tac::CodeObject * merged = tac::merge(conditionCode, comparator);
 			merged = tac::merge(merged, codeTrue);
@@ -342,6 +342,9 @@ if_stmt:
 			merged = tac::merge(merged, out);
 
 			$$ = merged;
+
+			outCnt++;
+			labelCnt++;
 		}
 	}
 
@@ -360,12 +363,12 @@ cond: expr compop expr {
 	}
 
 /* Comparators use the OPPOSITE tiny command */
-compop: '<' { $$ = new ast::ASTNode_Comparator("jge"); } | 
-  		'>' { $$ = new ast::ASTNode_Comparator("jle"); } | 
-  		'=' { $$ = new ast::ASTNode_Comparator("jne"); } | 
-  		'!''=' { $$ = new ast::ASTNode_Comparator("jeq"); } | 
-  		'<''=' { $$ = new ast::ASTNode_Comparator("jlt"); } | 
-  		'>''=' { $$ = new ast::ASTNode_Comparator("jgt"); }
+compop: '<' { $$ = new ast::ASTNode_Comparator("jge", "jlt"); } | 
+  		'>' { $$ = new ast::ASTNode_Comparator("jle", "jgt"); } | 
+  		'=' { $$ = new ast::ASTNode_Comparator("jne", "jne"); } | 
+  		'!''=' { $$ = new ast::ASTNode_Comparator("jeq", "jeq"); } | 
+  		'<''=' { $$ = new ast::ASTNode_Comparator("jgt", "jle"); } | 
+  		'>''=' { $$ = new ast::ASTNode_Comparator("jlt", "jge"); }
 while_stmt: WHILE '(' cond ')' decl { addControlDecl($5); } stmt_list ENDWHILE {
 	
 	tac::CodeObject * loopCode = $7;
@@ -376,7 +379,7 @@ while_stmt: WHILE '(' cond ')' decl { addControlDecl($5); } stmt_list ENDWHILE {
 
 	labelWhile->addLine(new tac::CodeLine(
 		"label", "WHILE_" + to_string(whileCnt), "", ""
-	)); // Comparator code
+	)); // while label
 	jumpOut->addLine(new tac::CodeLine(
 		"jmp", "WHILE_" + to_string(whileCnt), "", ""
 	));
@@ -407,6 +410,8 @@ while_stmt: WHILE '(' cond ')' decl { addControlDecl($5); } stmt_list ENDWHILE {
 
 		$$ = merged;
 	}
+	whileCnt++;
+	outCnt++;
 }
 
 control_stmt: return_stmt {
@@ -416,12 +421,69 @@ control_stmt: return_stmt {
 	} | BREAK ';' {
 		$$ = NULL;
 	}
-loop_stmt: while_stmt { $$ = $1; } | for_stmt { $$ = NULL; }
-init_stmt: | assign_expr
-	{}
-incr_stmt: | assign_expr
-	{}
-for_stmt: FOR '(' init_stmt ';' cond ';' incr_stmt ')' decl stmt_list ENDFOR
-	{}
+loop_stmt: while_stmt { $$ = $1; } | for_stmt { $$ = $1; }
+init_stmt: { $$ = NULL; } | assign_expr { $$ = $1; }
+incr_stmt: { $$ = NULL; } | assign_expr { $$ = $1; }
+
+for_stmt: FOR '(' init_stmt ';' cond ';' incr_stmt ')' decl stmt_list ENDFOR {
+
+	tac::CodeObject * loopCode = $10;
+	tac::CodeObject * conditionCode = new tac::CodeObject();
+	tac::CodeObject * labelFor = new tac::CodeObject();
+	tac::CodeObject * comparator = new tac::CodeObject();
+	tac::CodeObject * jumpOut = new tac::CodeObject();
+	tac::CodeObject * incr = new tac::CodeObject();
+
+	bool isTrueFlag = false;
+	bool isFalseFlag = false;
+
+	labelFor->addLine(new tac::CodeLine(
+		"label", "FOR_" + to_string(forCnt), "", ""
+	)); // for label
+	jumpOut->addLine(new tac::CodeLine(
+		"jmp", "FOR_" + to_string(forCnt), "", ""
+	));
+	jumpOut->addLine(new tac::CodeLine(
+		"label", "OUT_" + to_string(outCnt), "", ""
+	)); // Loop back code & Exit
+	incr->addLine(new tac::CodeLine(
+		"label", "INCR_" + to_string(incrCnt), "",""
+	)); // incr label
+	
+
+	if ($5->type == ast::Type::BOOLEAN) {
+		ASTNode_Boolean * boolNode = (ASTNode_Boolean *) $3;
+		if (boolNode->isTrue) {
+			isTrueFlag = true;
+		} else {
+			isFalseFlag = true;
+		}
+	} else {
+		conditionCode = tac::buildTAC($5);
+		ASTNode_Comparator * _compExpr = (ASTNode_Comparator *) $5;
+		
+		comparator->addLine(new tac::CodeLine(
+			_compExpr->comp, "OUT_" + to_string(outCnt), "", ""
+		));
+	}
+
+	if(!isFalseFlag) {
+
+		tac::CodeObject * merged = tac::merge($3, conditionCode);
+		merged = tac::merge(merged, labelFor);
+		merged = tac::merge(merged, conditionCode);
+		merged = tac::merge(merged, comparator);
+		merged = tac::merge(merged, loopCode);
+		merged = tac::merge(merged, incr);
+		merged = tac::merge(merged, $7);
+		merged = tac::merge(merged, jumpOut);
+
+		$$ = merged;
+
+		forCnt++; incrCnt++; outCnt++;
+	} else {
+		$$ = $3;
+	}
+}
 
 %%

@@ -39,9 +39,10 @@ ast::ASTNode_Assignment::ASTNode_Assignment() {
 	this->type = ast::Type::ASSIGNMENT;
 }
 
-ast::ASTNode_Comparator::ASTNode_Comparator(string comp) {
+ast::ASTNode_Comparator::ASTNode_Comparator(string comp, string oppo) {
 	this->type = ast::Type::COMPARATOR;
 	this->comp = comp;
+	this->oppo = oppo;
 }
 
 ast::ASTNode_Boolean::ASTNode_Boolean(bool isTrue) {

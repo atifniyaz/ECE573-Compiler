@@ -68,8 +68,9 @@ namespace ast {
 
 	class ASTNode_Comparator : public ASTNode {
 		public:
-			ASTNode_Comparator(string comp);
+			ASTNode_Comparator(string comp, string oppo);
 			string comp;
+			string oppo;
 	};
 
 	class ASTNode_Boolean : public ASTNode {

@@ -98,9 +98,31 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		// left is var assign
 		// right is expr
 		ASTNode_Identifier * leftNode = (ASTNode_Identifier *) node->left;
+		string rightLoc;
+		if (node->left->type == ast::Type::ID_FIER &&
+			node->right->type == ast::Type::ID_FIER) {
+			// make a temporary for right var
+
+			ASTNode_Identifier * nodeNode = (ASTNode_Identifier *) node->right;
+
+			merged->addLine(new tac::CodeLine(
+				"move",
+				nodeNode->idName,
+				"r" + to_string(temporaryCnt), ""
+			));
+			merged->temporary = temporaryCnt;
+			merged->type = node->type;
+
+			rightLoc = "r" + to_string(temporaryCnt);
+			temporaryCnt++;
+
+		} else {
+			rightLoc = "r" + to_string(right->temporary);
+		}
+
 		merged->addLine(new tac::CodeLine(
 			"move",
-			"r" + to_string(right->temporary),
+			rightLoc,
 			leftNode->idName,
 			""
 		));
@@ -159,9 +181,46 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 			// Strange enough, this identifier doesn't exist???
 		}
 	} else if (node->type == ast::Type::COMPARATOR) {
+
+		ASTNode_Comparator * astComp = (ASTNode_Comparator *) node;
+
 		string leftStorage = getName(node->left, left);
 		string rightStorage = getName(node->right, right);
-		string cmpOpr = left->type != right->type ? "r" : "i";
+		string cmpOpr;
+
+		if (left->type != right->type) {
+			cmpOpr = "r";
+		} else {
+			cmpOpr = left->type == ast::Type::FLOAT_VAL ? "r" : "i";
+		}
+
+		if (node->left->type == ast::Type::ID_FIER &&
+			node->right->type == ast::Type::ID_FIER) {
+			// We will create a temporary just for right
+
+			ASTNode_Identifier * nodeNode = (ASTNode_Identifier *) node->right;
+
+			merged->addLine(new tac::CodeLine(
+				"move",
+				nodeNode->idName,
+				"r" + to_string(temporaryCnt), ""
+			));
+			merged->temporary = temporaryCnt;
+			merged->type = node->type;
+
+			rightStorage = "r" + to_string(temporaryCnt);
+			temporaryCnt++;
+		} else if(node->right->type == ast::Type::ID_FIER &&
+			(node->left->type == ast::Type::INT_VAL ||
+			 node->left->type == ast::Type::FLOAT_VAL)) {
+			// Flip the two
+			// Reverse the operator
+			string tempStorage = leftStorage;
+			leftStorage = rightStorage;
+			rightStorage = tempStorage;
+
+			astComp->comp = astComp->oppo;
+		}
 
 		merged->addLine(new tac::CodeLine(
 			"cmp" + cmpOpr,
