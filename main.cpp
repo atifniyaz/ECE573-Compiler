@@ -16,8 +16,7 @@ tac::CodeObject * tinyCode = new tac::CodeObject();
 extern FILE * yyin;
 
 extern "C" int yyparse();
-void parseSymbolTable();
-void parseSymbolTable();
+bool parseSymbolTable();
 
 int main(int argc, char ** argv) {
 	if (argc >= 2) {
@@ -34,12 +33,13 @@ int main(int argc, char ** argv) {
 	if (yyparse()) {
 		cout << "Not Accepted";
 	} else {
-		parseSymbolTable();
+		if (parseSymbolTable()) {
 
-		vector<tac::CodeLine *> lines = masterCode->codeList;
+			vector<tac::CodeLine *> lines = masterCode->codeList;
 
-		for(int i = 0; i < lines.size(); i++) {
-			cout << lines[i]->stringify() << endl;
+			for(int i = 0; i < lines.size(); i++) {
+				cout << lines[i]->stringify() << endl;
+			}
 		}
 	}
 	return 0;
@@ -49,18 +49,19 @@ void yyerror(char *s) {
 	cout << s << endl;
 }
 
-void parseSymbolTable() {
+bool parseSymbolTable() {
 	SymbolTableStack * holder = new SymbolTableStack();
 	while (!stackTable->isEmpty()) {
 		SymbolTable * data = stackTable->poll();
 		if (data->isLegal()) {
 			holder->enqueue(data);
 		} else {
-			return;
+			return false;
 		}
 	}
 
 	while (!holder->isEmpty()) {
-		holder->poll()->printVar();
+		holder->poll()->print();
 	}
+	return true;
 }

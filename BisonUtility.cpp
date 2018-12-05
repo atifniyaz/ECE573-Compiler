@@ -20,7 +20,7 @@ void bu::addControlDecl(Identifier * id) {
 	blockCnt++;
 }
 
-void bu::addFuncDecl(Identifier * bodyDecl, Identifier * argsDecl, string name) {
+Identifier * bu::addFuncDecl(Identifier * bodyDecl, Identifier * argsDecl, string name) {
 	Identifier * decl;
 	if(argsDecl != NULL) {
 		argsDecl->getLast()->next = bodyDecl;
@@ -29,6 +29,7 @@ void bu::addFuncDecl(Identifier * bodyDecl, Identifier * argsDecl, string name) 
 		decl = bodyDecl;
 	}
 	stackTable->enqueue(new SymbolTable(name, decl, st::Type::FUNC));
+	return decl;
 }
 
 Identifier * bu::buildDecl(Identifier * parent, Identifier * child) {

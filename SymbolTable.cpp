@@ -4,6 +4,9 @@ SymbolTable::SymbolTable(string name, Identifier * ids, st::Type type) {
 	this->name = name;
 	this->ids = ids;
 	this->type = type;
+	this->isLegalStr = "";
+
+	this->buildDeclMap(ids);
 }
 
 bool SymbolTable::isLegal() {
@@ -28,7 +31,25 @@ bool SymbolTable::isLegal() {
 	}
 	return true;
 }
-
+/*
+bool SymbolTable::isLegal() {
+	if (!this->isLegalStr.empty()) {
+		cout << "DECLARATION ERROR " << this->isLegalStr << endl;
+		return false;
+	} else {
+		return true;
+	}
+}
+*/
+/*
+Identifier * SymbolTable::findIdentifier(string name) {
+	if (this->declMap.find(name) != this->declMap.end()) {
+		return this->declMap.find(name)->second;
+	} else {
+		return NULL;
+	}
+} 
+*/
 Identifier * SymbolTable::findIdentifier(string name) {
 	Identifier * currId = this->ids;
 	while (currId != NULL) {
@@ -41,32 +62,34 @@ Identifier * SymbolTable::findIdentifier(string name) {
 	return NULL;
 }
 
-void SymbolTable::print() {
+void SymbolTable::buildDeclMap(Identifier * ids) {
+	this->declMap.clear();
 	Identifier * currId = this->ids;
-	cout << "Symbol table " << this->name << endl;
+	bool caughtFaulty = false;
 
 	while (currId != NULL) {
-		cout << "name " << currId->name << " type " << currId->getType();
 
-		if (!currId->getType().compare("STRING")) {
-			cout << " value " << ((IdString *) currId)->value << endl;
+		Identifier * currIdCpy = currId;
+		string idName = currIdCpy->name;
+
+		if (!caughtFaulty && this->declMap.find(idName) != this->declMap.end()) {
+			this->isLegalStr = idName;
+			caughtFaulty = true;
 		} else {
-			cout << endl;
-		} 
+			this->declMap.insert(pair<string, Identifier *>(idName, currIdCpy));
+		}
+
 		currId = currId->next;
 	}
-	cout << endl;
 }
 
-void SymbolTable::printVar() {
-	Identifier * currId = this->ids;
-	while (currId != NULL) {
-
-		if (!currId->getType().compare("STRING")) {
-			cout << "str " << currId->name << " " << ((IdString *) currId)->value << endl;
+void SymbolTable::print() {
+	for (const auto& any : this->declMap) {
+	    Identifier * id = any.second;
+	   	if (!id->getType().compare("STRING")) {
+			cout << "str " << id->name << " " << ((IdString *) id)->value << endl;
 		} else {
-			cout << "var " << currId->name << endl;
+			cout << "var " << id->name << endl;
 		} 
-		currId = currId->next;
 	}
 }

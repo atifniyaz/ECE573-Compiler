@@ -80,9 +80,10 @@ int incrCnt = 0;
 
 %%
 
-program: PROGRAM id _BEGIN pgm_body END {
+program: PROGRAM id {
+	masterCode->addLine(new tac::CodeLine("jsr", "FUNC_ID_main", "", ""));
 	masterCode->addLine(new tac::CodeLine("sys halt", "", "", ""));
-}
+} _BEGIN pgm_body END
 
 id: IDENTIFIER 
 	{}
@@ -156,9 +157,13 @@ func_declarations: | func_decl func_declarations
 
 	}
 func_decl: FUNCTION any_type id '(' param_decl_list ')' _BEGIN 
-	decl { addFuncDecl($8, $5, $3->value); } 
+	decl { $8 = addFuncDecl($8, $5, $3->value); } 
 	stmt_list END {
+		masterCode->addLine(new tac::CodeLine("label", "FUNC_ID_" + $3->value, "", ""));
+		masterCode->addLine(new tac::CodeLine("link", to_string($8->count()), "", ""));
 		masterCode = tac::merge(masterCode, $10);
+		masterCode->addLine(new tac::CodeLine("unlnk", "", "", ""));
+		masterCode->addLine(new tac::CodeLine("ret", "", "", ""));
 	}
 
 stmt_list: { $$ = NULL; } | stmt stmt_list

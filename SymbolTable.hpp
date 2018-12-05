@@ -3,6 +3,7 @@
 
 #include<string>
 #include<iostream>
+#include<map>
 
 #include "Identifier.hpp"
 
@@ -18,12 +19,17 @@ public:
 	Identifier * ids;
 	st::Type type;
 
+	map<string, Identifier *> declMap;
+	string isLegalStr;
+
 	SymbolTable(string name, Identifier * ids, st::Type type);
 
 	bool isLegal();
 	void print();
-	void printVar();
 	Identifier * findIdentifier(string name);
+
+private:
+	void buildDeclMap(Identifier * ids);
 };
 
 #endif

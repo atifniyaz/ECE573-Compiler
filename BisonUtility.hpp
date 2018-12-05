@@ -14,7 +14,7 @@ namespace bu {
 	IdString * buildString(LLString * name, LLString * value);
 
 	void addControlDecl(Identifier * id);
-	void addFuncDecl(Identifier * bodyDecl, Identifier * argsDecl, string name);
+	Identifier * addFuncDecl(Identifier * bodyDecl, Identifier * argsDecl, string name);
 }
 
 #endif

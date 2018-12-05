@@ -13,6 +13,16 @@ Identifier * Identifier::getLast() {
 	return last;
 }
 
+int Identifier::count() {
+	int cnt = 0;
+	Identifier * node = this;
+	while (node != NULL) {
+		cnt++;
+		node = node->next;
+	}
+	return cnt;
+}
+
 string IdInteger::getType() {
 	return "INT";
 }

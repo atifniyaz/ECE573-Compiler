@@ -14,6 +14,7 @@ public:
 	virtual string getType() = 0;
 	Identifier * getLast();
 	void print();
+	int count();
 };
 
 class IdInteger : public Identifier {
