@@ -26,10 +26,11 @@ namespace tac {
 	class CodeObject {
 	public:
 		vector<CodeLine *> codeList;
-		int temporary;
+		long temporary;
 		ast::Type type; // more specifically for value type (int, float, str)
 
 		void addLine(CodeLine * line);
+		void print();
 		string getType();
 	};
 

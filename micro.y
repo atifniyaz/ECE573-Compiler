@@ -24,6 +24,8 @@ extern SymbolTableStack * stackTable;
 extern tac::CodeObject * masterCode;
 
 int blockCnt = 1;
+int labelCnt = 0;
+int outCnt = 0;
 %}
 
 %error-verbose
@@ -32,13 +34,15 @@ int blockCnt = 1;
 	Identifier * identifier;
 	LLString * stringList;
 	ast::ASTNode * astNode;
+	tac::CodeObject * codeObject;
 	int intVal;
 	float flVal;
 }
 
 %type <identifier> string_decl var_decl decl param_decl param_decl_list param_decl_tail
 %type <stringList> id_list id_tail var_type id str
-%type <astNode> addop mulop expr expr_prefix factor factor_prefix post_fix_expr primary assign_expr
+%type <astNode> addop mulop expr expr_prefix factor factor_prefix post_fix_expr primary compop cond 
+%type <codeObject> stmt stmt_list base_stmt if_stmt loop_stmt assign_stmt read_stmt write_stmt control_stmt assign_expr else_part
 %type <intVal> intval
 %type <flVal> fltval
 
@@ -149,28 +153,43 @@ func_declarations: | func_decl func_declarations
 	}
 func_decl: FUNCTION any_type id '(' param_decl_list ')' _BEGIN 
 	decl { addFuncDecl($8, $5, $3->value); } 
-	stmt_list END
+	stmt_list END {
+		masterCode = tac::merge(masterCode, $10);
+	}
 
-stmt_list: | stmt stmt_list
-	{}
-stmt: base_stmt | if_stmt | loop_stmt
-	{}
-base_stmt: assign_stmt | read_stmt | write_stmt | control_stmt
-	{}
+stmt_list: { $$ = NULL; } | stmt stmt_list
+	{
+		$$ = tac::merge($1, $2);
+	}
+stmt: base_stmt {
+		$$ = $1;
+	} | if_stmt {
+		$$ = $1;
+	} | loop_stmt {
+		$$ = NULL;
+	}
+base_stmt: assign_stmt { $$ = $1; } | 
+		   read_stmt { $$ = $1; } | 
+		   write_stmt { $$ = $1; } | 
+		   control_stmt { $$ = $1; }
 
 assign_stmt: assign_expr ';'
-	{}
+	{
+		$$ = $1;
+	}
 assign_expr: id ASSIGN_OP expr
 	{
-		$$ = new ast::ASTNode_Assignment();
-		$$->left = new ast::ASTNode_Identifier($1->value);
-		$$->right = $3;
+		ASTNode * node = new ast::ASTNode_Assignment();
+		node->left = new ast::ASTNode_Identifier($1->value);
+		node->right = $3;
 
-		masterCode = tac::merge(masterCode, tac::buildTAC($$));
+		$$ = tac::buildTAC(node);
 	}
 read_stmt: READ '(' id_list ')'';'
 	{
 		LLString * list = $3;
+		tac::CodeObject * readCode = new tac::CodeObject();
+
 		while (list != NULL) {
 			string idName = list->value;
 			Identifier * id = stackTable->findIdentifier(idName);
@@ -184,15 +203,18 @@ read_stmt: READ '(' id_list ')'';'
 				prefix = "s";
 			}
 
-			masterCode->addLine(new tac::CodeLine(
+			readCode->addLine(new tac::CodeLine(
 				"sys read" + prefix,
 				idName, "", ""));
 			list = list->next;
 		}
+		$$ = readCode;
 	}
 write_stmt: WRITE '(' id_list ')'';'
 	{
 		LLString * list = $3;
+		tac::CodeObject * writeCode = new tac::CodeObject();
+
 		while (list != NULL) {
 			string idName = list->value;
 			Identifier * id = stackTable->findIdentifier(idName);
@@ -206,11 +228,12 @@ write_stmt: WRITE '(' id_list ')'';'
 				prefix = "s";
 			}
 
-			masterCode->addLine(new tac::CodeLine(
+			writeCode->addLine(new tac::CodeLine(
 				"sys write" + prefix, 
 				idName, "", ""));
 			list = list->next;
 		}
+		$$ = writeCode;
 	}
 return_stmt: RETURN expr ';'
 	{}
@@ -275,18 +298,80 @@ mulop: '*' { $$ = new ast::ASTNode_MulExpr(true); } |
 	   '/' { $$ = new ast::ASTNode_MulExpr(false); }
 
 if_stmt: 
-	IF '(' cond ')' decl { addControlDecl($5); } stmt_list else_part ENDIF
+	IF '(' cond ')' decl { addControlDecl($5); } stmt_list else_part ENDIF {
+		if ($3->type == ast::Type::BOOLEAN) {
+			ASTNode_Boolean * boolNode = (ASTNode_Boolean *) $3;
+			if (boolNode->isTrue) {
+				$$ = $7;
+			} else {
+				$$ = $8;
+			}
+		} else {
+			// conditionCode, comparatorCode, codeTrue, jumpCode, codeFalse, outCode
+			tac::CodeObject * codeTrue = $7;
+			tac::CodeObject * codeFalse = $8;
+			tac::CodeObject * conditionCode = tac::buildTAC($3);
 
-else_part: | ELSE decl { addControlDecl($2); } stmt_list
+			tac::CodeObject * comparator = new tac::CodeObject();
+			tac::CodeObject * jump = new tac::CodeObject();
+			tac::CodeObject * out = new tac::CodeObject();
+
+			ASTNode_Comparator * _compExpr = (ASTNode_Comparator *) $3;
+
+			comparator->addLine(new tac::CodeLine(
+				_compExpr->comp, "ELSE_" + to_string(labelCnt), "", ""
+			)); // Comparator code
+			jump->addLine(new tac::CodeLine(
+				"jmp", "OUT_" + to_string(outCnt), "", ""
+			));
+			jump->addLine(new tac::CodeLine(
+				"label", "ELSE_" + to_string(labelCnt), "", ""
+			)); // Jump code
+			out->addLine(new tac::CodeLine(
+				"label", "OUT_" + to_string(outCnt), "", ""
+			));
+			outCnt++;
+			labelCnt++;
+
+			tac::CodeObject * merged = tac::merge(conditionCode, comparator);
+			merged = tac::merge(merged, codeTrue);
+			merged = tac::merge(merged, jump);
+			merged = tac::merge(merged, codeFalse);
+			merged = tac::merge(merged, out);
+
+			$$ = merged;
+		}
+	}
+
+else_part: { $$ = NULL; } | ELSE decl { addControlDecl($2); } stmt_list {
+	$$ = $4;
+}
 	
-cond: expr compop expr | TRUE | FALSE
-	{}
-compop: '<' | '>' | '=' | '!''=' | '<''=' | '>''='
-	{}
+cond: expr compop expr {
+		$2->left = $1;
+		$2->right = $3;
+		$$ = $2;
+	} | TRUE { 
+		$$ = new ASTNode_Boolean(true);
+	} | FALSE {
+		$$ = new ASTNode_Boolean(false);
+	}
+
+compop: '<' { $$ = new ast::ASTNode_Comparator("jge"); } | 
+  		'>' { $$ = new ast::ASTNode_Comparator("jle"); } | 
+  		'=' { $$ = new ast::ASTNode_Comparator("jne"); } | 
+  		'!''=' { $$ = new ast::ASTNode_Comparator("jeq"); } | 
+  		'<''=' { $$ = new ast::ASTNode_Comparator("jlt"); } | 
+  		'>''=' { $$ = new ast::ASTNode_Comparator("jgt"); }
 while_stmt: WHILE '(' cond ')' decl { addControlDecl($5); } stmt_list ENDWHILE
 
-control_stmt: return_stmt | CONTINUE ';' | BREAK ';'
-	{}
+control_stmt: return_stmt {
+		$$ = NULL;
+	} | CONTINUE ';' {
+		$$ = NULL;
+	} | BREAK ';' {
+		$$ = NULL;
+	}
 loop_stmt: while_stmt | for_stmt
 	{}
 init_stmt: | assign_expr

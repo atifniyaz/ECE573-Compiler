@@ -8,7 +8,8 @@ using namespace std;
 namespace ast {
 
 	enum class Type {
-		ADD_EXPR, MUL_EXPR, INT_VAL, FLOAT_VAL, ID_FIER, ASSIGNMENT, STR_VAL
+		ADD_EXPR, MUL_EXPR, INT_VAL, FLOAT_VAL, 
+		ID_FIER, ASSIGNMENT, STR_VAL, COMPARATOR, BOOLEAN
 	};
 
 	class ASTNode {
@@ -16,35 +17,30 @@ namespace ast {
 		ASTNode();
 		ASTNode * left;
 		ASTNode * right;
+		ASTNode * leftCenter;
+		ASTNode * rightCenter;
+
 		Type type;
 
-		void print(int depth);
 		virtual string getTAC() { return ""; }
-		virtual void onPrint() = 0;
 	};
 
 	class ASTNode_AddExpr : public ASTNode {
 		public:
 			ASTNode_AddExpr(bool isAddition);
 			bool isAddition;
-
-			void onPrint();
 	};
 
 	class ASTNode_MulExpr : public ASTNode {
 		public:
 			ASTNode_MulExpr(bool isMultiplication);
 			bool isMultiplication;
-
-			void onPrint();
 	};
 
 	class ASTNode_INT : public ASTNode {
 		public:
 			ASTNode_INT(int value);
 			int value;
-
-			void onPrint();
 			string getTAC() {
 				return to_string(value);
 			}
@@ -54,8 +50,6 @@ namespace ast {
 		public:
 			ASTNode_FLOAT(float value);
 			float value;
-
-			void onPrint();
 			string getTAC() {
 				return to_string(value);
 			}
@@ -65,15 +59,27 @@ namespace ast {
 		public:
 			ASTNode_Identifier(string idName);
 			string idName;
-
-			void onPrint();
-
 	};
 
 	class ASTNode_Assignment : public ASTNode {
 		public:
 			ASTNode_Assignment();
-			void onPrint();
+	};
+
+	class ASTNode_Comparator : public ASTNode {
+		public:
+			ASTNode_Comparator(string comp);
+			string comp;
+	};
+
+	class ASTNode_Boolean : public ASTNode {
+		public:
+			ASTNode_Boolean(bool isTrue);
+			bool isTrue;
+	};
+
+	class ASTNode_CNTL_IF : public ASTNode {
+
 	};
 }
 

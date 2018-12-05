@@ -36,6 +36,21 @@ string tac::CodeObject::getType() {
 	}
 }
 
+void tac::CodeObject::print() {
+	for(int i = 0; i < this->codeList.size(); i++) {
+		cout << this->codeList[i]->stringify() << endl;
+	}
+}
+
+string getName(ASTNode * node, CodeObject * code) {
+	if (node->type == ast::Type::ID_FIER) {
+		ASTNode_Identifier * nodeNode = (ASTNode_Identifier *) node;
+		return nodeNode->idName;
+	} else {
+		return "r" + to_string(code->temporary);
+	}
+}
+
 CodeObject * tac::merge(CodeObject * left, CodeObject * right) {
 	if (left == NULL && right != NULL) {
 		return right;
@@ -94,24 +109,10 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 	} else if (node->type == ast::Type::MUL_EXPR || 
 		node->type == ast::Type::ADD_EXPR) {
 		// left / right could be identifiers
-		string leftStorage;
-		string rightStorage;
+		string leftStorage = getName(node->left, left);
+		string rightStorage = getName(node->right, right);
 		string tacPrefix;
 		ast::Type valType;
-
-		if (node->left->type == ast::Type::ID_FIER) {
-			ASTNode_Identifier * leftNode = (ASTNode_Identifier *) node->left;
-			leftStorage = leftNode->idName;
-		} else {
-			leftStorage = "r" + to_string(left->temporary);
-		}
-
-		if (node->right->type == ast::Type::ID_FIER) {
-			ASTNode_Identifier * rightNode = (ASTNode_Identifier *) node->right;
-			rightStorage = rightNode->idName;
-		} else {
-			rightStorage = "r" + to_string(right->temporary);
-		}
 
 		if (node->type == ast::Type::MUL_EXPR) {
 			ASTNode_MulExpr * exprNode = (ASTNode_MulExpr *) node;
@@ -157,6 +158,16 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		} else {
 			// Strange enough, this identifier doesn't exist???
 		}
+	} else if (node->type == ast::Type::COMPARATOR) {
+		string leftStorage = getName(node->left, left);
+		string rightStorage = getName(node->right, right);
+		string cmpOpr = left->type != right->type ? "r" : "i";
+
+		merged->addLine(new tac::CodeLine(
+			"cmp" + cmpOpr,
+			leftStorage, rightStorage, ""
+		));
+
 	}
 	return merged;
 }
