@@ -50,3 +50,15 @@ ast::ASTNode_Boolean::ASTNode_Boolean(bool isTrue) {
 	this->isTrue = true;
 }
 
+ast::ASTNode_Function_Call::ASTNode_Function_Call() {
+	this->type = ast::Type::FUNC_CALL;
+}
+
+ast::ASTNode_Expr_List::ASTNode_Expr_List() {
+	this->type = ast::Type::EXPR_LIST;
+}
+
+void ast::ASTNode_Expr_List::add(ASTNode * node) {
+	this->exprList.push_back(node);
+}
+

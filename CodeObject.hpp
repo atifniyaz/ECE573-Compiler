@@ -3,6 +3,7 @@
 
 #include<vector>
 #include<string>
+#include<set>
 
 #include "AST.hpp"
 
@@ -26,10 +27,12 @@ namespace tac {
 	class CodeObject {
 	public:
 		vector<CodeLine *> codeList;
-		long temporary;
+		set<string> tempReg;
+		int temporary;
 		ast::Type type; // more specifically for value type (int, float, str)
 
 		void addLine(CodeLine * line);
+		void addRegister(string reg);
 		void print();
 		string getType();
 	};

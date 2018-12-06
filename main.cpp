@@ -59,9 +59,6 @@ bool parseSymbolTable() {
 			return false;
 		}
 	}
-
-	while (!holder->isEmpty()) {
-		holder->poll()->print();
-	}
+	holder->poll()->print();
 	return true;
 }

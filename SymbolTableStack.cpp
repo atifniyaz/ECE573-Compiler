@@ -69,6 +69,7 @@ Identifier * SymbolTableStack::findIdentifier(string name) {
 	SymbolTableHolder * head = this->head;
 	while (idId == NULL && head != NULL) {
 		idId = head->value->findIdentifier(name);
+		head = head->next;
 	}
 	return idId;
 }

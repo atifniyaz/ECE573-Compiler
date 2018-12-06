@@ -20,8 +20,10 @@ using namespace std;
 using namespace bu;
 
 extern SymbolTableStack * stackTable;
+SymbolTableStack * declStack = new SymbolTableStack();
 
 extern tac::CodeObject * masterCode;
+extern int temporaryCnt;
 
 int blockCnt = 1;
 int labelCnt = 0;
@@ -45,8 +47,8 @@ int incrCnt = 0;
 
 %type <identifier> string_decl var_decl decl param_decl param_decl_list param_decl_tail
 %type <stringList> id_list id_tail var_type id str
-%type <astNode> addop mulop expr expr_prefix factor factor_prefix post_fix_expr primary compop cond 
-%type <codeObject> stmt stmt_list base_stmt if_stmt loop_stmt assign_stmt read_stmt write_stmt control_stmt assign_expr else_part while_stmt init_stmt incr_stmt for_stmt
+%type <astNode> addop mulop expr expr_prefix factor factor_prefix post_fix_expr primary compop cond call_expr expr_list_tail expr_list
+%type <codeObject> stmt stmt_list base_stmt if_stmt loop_stmt assign_stmt read_stmt write_stmt control_stmt assign_expr else_part while_stmt init_stmt incr_stmt for_stmt func_declarations func_decl pgm_body return_stmt
 %type <intVal> intval
 %type <flVal> fltval
 
@@ -81,17 +83,25 @@ int incrCnt = 0;
 %%
 
 program: PROGRAM id {
-	masterCode->addLine(new tac::CodeLine("jsr", "FUNC_ID_main", "", ""));
-	masterCode->addLine(new tac::CodeLine("sys halt", "", "", ""));
-} _BEGIN pgm_body END
+		masterCode->addLine(new tac::CodeLine("push", "", "", ""));
+		masterCode->addLine(new tac::CodeLine("jsr", "FUNC_ID_main", "", ""));
+		masterCode->addLine(new tac::CodeLine("sys halt", "", "", ""));
+	} _BEGIN pgm_body END {
+		declStack->pop();
+		masterCode = tac::merge(masterCode, $5);
+	}
 
 id: IDENTIFIER 
 	{}
 pgm_body: decl 
 	{
-		stackTable->enqueue(new SymbolTable("GLOBAL", $1, st::Type::GLOBAL));
+		SymbolTable * table = new SymbolTable("GLOBAL", $1, st::Type::GLOBAL);
+		stackTable->enqueue(table);
+		declStack->push(table);
 	}
-	func_declarations 
+	func_declarations {
+		$$ = $3;
+	}
 	
 decl: { $$ = NULL; } | string_decl decl 
 	{
@@ -152,18 +162,26 @@ param_decl_tail: { $$ = NULL; } | ',' param_decl param_decl_tail
 		$$->next = $3;
 	}
 
-func_declarations: | func_decl func_declarations
+func_declarations: { $$ = new tac::CodeObject(); } | func_decl func_declarations
 	{
-
+		$$ = tac::merge($1, $2);
 	}
 func_decl: FUNCTION any_type id '(' param_decl_list ')' _BEGIN 
-	decl { $8 = addFuncDecl($8, $5, $3->value); } 
+	decl { 
+		SymbolTable * table = addFuncDecl($8, $5, $3->value); 
+		declStack->push(table);
+		$8 = table->ids;
+	} 
 	stmt_list END {
-		masterCode->addLine(new tac::CodeLine("label", "FUNC_ID_" + $3->value, "", ""));
-		masterCode->addLine(new tac::CodeLine("link", to_string($8->count()), "", ""));
-		masterCode = tac::merge(masterCode, $10);
-		masterCode->addLine(new tac::CodeLine("unlnk", "", "", ""));
-		masterCode->addLine(new tac::CodeLine("ret", "", "", ""));
+		declStack->pop();
+
+		tac::CodeObject * funcObj = new tac::CodeObject();
+		funcObj->addLine(new tac::CodeLine("label", "FUNC_ID_" + $3->value, "", ""));
+		funcObj->addLine(new tac::CodeLine("link", to_string($8->count()), "", ""));
+		funcObj = tac::merge(funcObj, $10);
+		funcObj->addLine(new tac::CodeLine("unlnk", "", "", ""));
+		funcObj->addLine(new tac::CodeLine("ret", "", "", ""));
+		$$ = funcObj;
 	}
 
 stmt_list: { $$ = NULL; } | stmt stmt_list
@@ -201,7 +219,7 @@ read_stmt: READ '(' id_list ')'';'
 
 		while (list != NULL) {
 			string idName = list->value;
-			Identifier * id = stackTable->findIdentifier(idName);
+			Identifier * id = declStack->findIdentifier(idName);
 			string prefix;
 
 			if (!id->getType().compare("INT")) {
@@ -214,7 +232,7 @@ read_stmt: READ '(' id_list ')'';'
 
 			readCode->addLine(new tac::CodeLine(
 				"sys read" + prefix,
-				idName, "", ""));
+				id->name, "", ""));
 			list = list->next;
 		}
 		$$ = readCode;
@@ -226,7 +244,7 @@ write_stmt: WRITE '(' id_list ')'';'
 
 		while (list != NULL) {
 			string idName = list->value;
-			Identifier * id = stackTable->findIdentifier(idName);
+			Identifier * id = declStack->findIdentifier(idName);
 			string prefix;
 
 			if (!id->getType().compare("INT")) {
@@ -239,13 +257,35 @@ write_stmt: WRITE '(' id_list ')'';'
 
 			writeCode->addLine(new tac::CodeLine(
 				"sys write" + prefix, 
-				idName, "", ""));
+				id->name, "", ""));
 			list = list->next;
 		}
 		$$ = writeCode;
 	}
 return_stmt: RETURN expr ';'
-	{}
+	{
+		tac::CodeObject * saveLoc = new tac::CodeObject();
+		tac::CodeObject * exprCode = tac::buildTAC($2);
+
+		string regName;
+		if ($2->type == ast::Type::ID_FIER) {
+			ASTNode_Identifier * nodeNode = (ASTNode_Identifier *) $2;
+			regName = nodeNode->idName;
+		} else {
+			regName = "r" + to_string(exprCode->temporary);
+		}
+
+		saveLoc->addRegister("r" + to_string(temporaryCnt));
+		saveLoc->addLine(new tac::CodeLine(
+			"move", regName, "r" + to_string(temporaryCnt), ""
+		));
+		saveLoc->addLine(new tac::CodeLine(
+			"move", "r" + to_string(temporaryCnt++), "$2", ""
+		));
+		saveLoc->addLine(new tac::CodeLine("unlnk", "", "", ""));
+		saveLoc->addLine(new tac::CodeLine("ret", "", "", ""));
+		$$ = tac::merge(exprCode, saveLoc);
+	}
 
 expr: expr_prefix factor
 	{
@@ -286,13 +326,23 @@ factor_prefix: { $$ = NULL; } | factor_prefix post_fix_expr mulop
 		$$ = $3;
 	}
 post_fix_expr: primary { $$ = $1; } | 
-	call_expr { $$ = NULL; }
+	call_expr { $$ = $1; }
 call_expr: id '(' expr_list ')'
-	{}
-expr_list: { } | expr expr_list_tail
-	{}
-expr_list_tail: | ',' expr expr_list_tail
-	{}
+	{
+		$$ = new ast::ASTNode_Function_Call();
+		$$->left = new ast::ASTNode_Identifier($1->value);
+		$$->right = $3;
+	}
+expr_list: { $$ = new ast::ASTNode_Expr_List(); } | expr expr_list_tail
+	{
+		((ast::ASTNode_Expr_List *) $2)->add($1);
+		$$ = $2;
+	}
+expr_list_tail: { $$ = new ast::ASTNode_Expr_List(); } | ',' expr expr_list_tail
+	{
+		((ast::ASTNode_Expr_List *) $3)->add($2);
+		$$ = $3;
+	}
 primary: '(' expr ')' { $$ = $2; } | 
 	id { 
 		$$ = new ast::ASTNode_Identifier($1->value);
@@ -307,7 +357,10 @@ mulop: '*' { $$ = new ast::ASTNode_MulExpr(true); } |
 	   '/' { $$ = new ast::ASTNode_MulExpr(false); }
 
 if_stmt: 
-	IF '(' cond ')' decl { addControlDecl($5); } stmt_list else_part ENDIF {
+	IF '(' cond ')' decl { 
+		declStack->push(addControlDecl($5));
+	} stmt_list else_part ENDIF {
+		declStack->pop();
 		if ($3->type == ast::Type::BOOLEAN) {
 			ASTNode_Boolean * boolNode = (ASTNode_Boolean *) $3;
 			if (boolNode->isTrue) {
@@ -353,9 +406,12 @@ if_stmt:
 		}
 	}
 
-else_part: { $$ = NULL; } | ELSE decl { addControlDecl($2); } stmt_list {
-	$$ = $4;
-}
+else_part: { $$ = NULL; } | ELSE decl { 
+		declStack->push(addControlDecl($2)); 
+	} stmt_list {
+		declStack->pop();
+		$$ = $4;
+	}
 	
 cond: expr compop expr {
 		$2->left = $1;
@@ -374,53 +430,55 @@ compop: '<' { $$ = new ast::ASTNode_Comparator("jge", "jlt"); } |
   		'!''=' { $$ = new ast::ASTNode_Comparator("jeq", "jeq"); } | 
   		'<''=' { $$ = new ast::ASTNode_Comparator("jgt", "jle"); } | 
   		'>''=' { $$ = new ast::ASTNode_Comparator("jlt", "jge"); }
-while_stmt: WHILE '(' cond ')' decl { addControlDecl($5); } stmt_list ENDWHILE {
-	
-	tac::CodeObject * loopCode = $7;
-	tac::CodeObject * conditionCode;
-	tac::CodeObject * labelWhile = new tac::CodeObject();
-	tac::CodeObject * comparator = new tac::CodeObject();
-	tac::CodeObject * jumpOut = new tac::CodeObject();
+while_stmt: WHILE '(' cond ')' decl { 
+		declStack->push(addControlDecl($5)); 
+	} stmt_list ENDWHILE {
+		declStack->pop();
+		tac::CodeObject * loopCode = $7;
+		tac::CodeObject * conditionCode;
+		tac::CodeObject * labelWhile = new tac::CodeObject();
+		tac::CodeObject * comparator = new tac::CodeObject();
+		tac::CodeObject * jumpOut = new tac::CodeObject();
 
-	labelWhile->addLine(new tac::CodeLine(
-		"label", "WHILE_" + to_string(whileCnt), "", ""
-	)); // while label
-	jumpOut->addLine(new tac::CodeLine(
-		"jmp", "WHILE_" + to_string(whileCnt), "", ""
-	));
-	jumpOut->addLine(new tac::CodeLine(
-		"label", "OUT_" + to_string(outCnt), "", ""
-	)); // Loop back code & Exit
-
-	if ($3->type == ast::Type::BOOLEAN) {
-		ASTNode_Boolean * boolNode = (ASTNode_Boolean *) $3;
-		if (boolNode->isTrue) {
-			tac::CodeObject * allTrue = tac::merge(labelWhile, loopCode);
-			$$ = tac::merge(allTrue, jumpOut);
-		} else {
-			$$ = NULL;
-		}
-	} else {
-		conditionCode = tac::buildTAC($3);
-		ASTNode_Comparator * _compExpr = (ASTNode_Comparator *) $3;
-		
-		comparator->addLine(new tac::CodeLine(
-			_compExpr->comp, "OUT_" + to_string(outCnt), "", ""
+		labelWhile->addLine(new tac::CodeLine(
+			"label", "WHILE_" + to_string(whileCnt), "", ""
+		)); // while label
+		jumpOut->addLine(new tac::CodeLine(
+			"jmp", "WHILE_" + to_string(whileCnt), "", ""
 		));
+		jumpOut->addLine(new tac::CodeLine(
+			"label", "OUT_" + to_string(outCnt), "", ""
+		)); // Loop back code & Exit
 
-		tac::CodeObject * merged = tac::merge(labelWhile, conditionCode);
-		merged = tac::merge(merged, comparator);
-		merged = tac::merge(merged, loopCode);
-		merged = tac::merge(merged, jumpOut);
+		if ($3->type == ast::Type::BOOLEAN) {
+			ASTNode_Boolean * boolNode = (ASTNode_Boolean *) $3;
+			if (boolNode->isTrue) {
+				tac::CodeObject * allTrue = tac::merge(labelWhile, loopCode);
+				$$ = tac::merge(allTrue, jumpOut);
+			} else {
+				$$ = NULL;
+			}
+		} else {
+			conditionCode = tac::buildTAC($3);
+			ASTNode_Comparator * _compExpr = (ASTNode_Comparator *) $3;
+			
+			comparator->addLine(new tac::CodeLine(
+				_compExpr->comp, "OUT_" + to_string(outCnt), "", ""
+			));
 
-		$$ = merged;
+			tac::CodeObject * merged = tac::merge(labelWhile, conditionCode);
+			merged = tac::merge(merged, comparator);
+			merged = tac::merge(merged, loopCode);
+			merged = tac::merge(merged, jumpOut);
+
+			$$ = merged;
+		}
+		whileCnt++;
+		outCnt++;
 	}
-	whileCnt++;
-	outCnt++;
-}
 
 control_stmt: return_stmt {
-		$$ = NULL;
+		$$ = $1;
 	} | CONTINUE ';' {
 		$$ = NULL;
 	} | BREAK ';' {
@@ -430,65 +488,67 @@ loop_stmt: while_stmt { $$ = $1; } | for_stmt { $$ = $1; }
 init_stmt: { $$ = NULL; } | assign_expr { $$ = $1; }
 incr_stmt: { $$ = NULL; } | assign_expr { $$ = $1; }
 
-for_stmt: FOR '(' init_stmt ';' cond ';' incr_stmt ')' decl stmt_list ENDFOR {
+for_stmt: FOR '(' init_stmt ';' cond ';' incr_stmt ')' decl {
+		declStack->push(addControlDecl($9)); 
+	} stmt_list ENDFOR {
+		declStack->pop();
+		tac::CodeObject * loopCode = $11;
+		tac::CodeObject * conditionCode = new tac::CodeObject();
+		tac::CodeObject * labelFor = new tac::CodeObject();
+		tac::CodeObject * comparator = new tac::CodeObject();
+		tac::CodeObject * jumpOut = new tac::CodeObject();
+		tac::CodeObject * incr = new tac::CodeObject();
 
-	tac::CodeObject * loopCode = $10;
-	tac::CodeObject * conditionCode = new tac::CodeObject();
-	tac::CodeObject * labelFor = new tac::CodeObject();
-	tac::CodeObject * comparator = new tac::CodeObject();
-	tac::CodeObject * jumpOut = new tac::CodeObject();
-	tac::CodeObject * incr = new tac::CodeObject();
+		bool isTrueFlag = false;
+		bool isFalseFlag = false;
 
-	bool isTrueFlag = false;
-	bool isFalseFlag = false;
-
-	labelFor->addLine(new tac::CodeLine(
-		"label", "FOR_" + to_string(forCnt), "", ""
-	)); // for label
-	jumpOut->addLine(new tac::CodeLine(
-		"jmp", "FOR_" + to_string(forCnt), "", ""
-	));
-	jumpOut->addLine(new tac::CodeLine(
-		"label", "OUT_" + to_string(outCnt), "", ""
-	)); // Loop back code & Exit
-	incr->addLine(new tac::CodeLine(
-		"label", "INCR_" + to_string(incrCnt), "",""
-	)); // incr label
-	
-
-	if ($5->type == ast::Type::BOOLEAN) {
-		ASTNode_Boolean * boolNode = (ASTNode_Boolean *) $3;
-		if (boolNode->isTrue) {
-			isTrueFlag = true;
-		} else {
-			isFalseFlag = true;
-		}
-	} else {
-		conditionCode = tac::buildTAC($5);
-		ASTNode_Comparator * _compExpr = (ASTNode_Comparator *) $5;
-		
-		comparator->addLine(new tac::CodeLine(
-			_compExpr->comp, "OUT_" + to_string(outCnt), "", ""
+		labelFor->addLine(new tac::CodeLine(
+			"label", "FOR_" + to_string(forCnt), "", ""
+		)); // for label
+		jumpOut->addLine(new tac::CodeLine(
+			"jmp", "FOR_" + to_string(forCnt), "", ""
 		));
+		jumpOut->addLine(new tac::CodeLine(
+			"label", "OUT_" + to_string(outCnt), "", ""
+		)); // Loop back code & Exit
+		incr->addLine(new tac::CodeLine(
+			"label", "INCR_" + to_string(incrCnt), "",""
+		)); // incr label
+		
+
+		if ($5->type == ast::Type::BOOLEAN) {
+			ASTNode_Boolean * boolNode = (ASTNode_Boolean *) $3;
+			if (boolNode->isTrue) {
+				isTrueFlag = true;
+			} else {
+				isFalseFlag = true;
+			}
+		} else {
+			conditionCode = tac::buildTAC($5);
+			ASTNode_Comparator * _compExpr = (ASTNode_Comparator *) $5;
+			
+			comparator->addLine(new tac::CodeLine(
+				_compExpr->comp, "OUT_" + to_string(outCnt), "", ""
+			));
+		}
+
+		if(!isFalseFlag) {
+
+			tac::CodeObject * merged = tac::merge($3, conditionCode);
+			merged = tac::merge(merged, labelFor);
+			merged = tac::merge(merged, conditionCode);
+			merged = tac::merge(merged, comparator);
+			merged = tac::merge(merged, loopCode);
+			merged = tac::merge(merged, incr);
+			merged = tac::merge(merged, $7);
+			merged = tac::merge(merged, jumpOut);
+
+			$$ = merged;
+
+			forCnt++; incrCnt++; outCnt++;
+		} else {
+			$$ = $3;
+		}
 	}
-
-	if(!isFalseFlag) {
-
-		tac::CodeObject * merged = tac::merge($3, conditionCode);
-		merged = tac::merge(merged, labelFor);
-		merged = tac::merge(merged, conditionCode);
-		merged = tac::merge(merged, comparator);
-		merged = tac::merge(merged, loopCode);
-		merged = tac::merge(merged, incr);
-		merged = tac::merge(merged, $7);
-		merged = tac::merge(merged, jumpOut);
-
-		$$ = merged;
-
-		forCnt++; incrCnt++; outCnt++;
-	} else {
-		$$ = $3;
-	}
-}
 
 %%

@@ -18,6 +18,7 @@ public:
 	string name;
 	Identifier * ids;
 	st::Type type;
+	int count;
 
 	map<string, Identifier *> declMap;
 	string isLegalStr;
@@ -26,6 +27,7 @@ public:
 
 	bool isLegal();
 	void print();
+	void reassignArgs(Identifier * ids);
 	Identifier * findIdentifier(string name);
 
 private:

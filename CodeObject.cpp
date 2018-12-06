@@ -1,6 +1,7 @@
 #include<vector>
 #include<string>
 #include<iostream>
+#include<set>
 
 #include "AST.hpp"
 #include "Identifier.hpp"
@@ -14,6 +15,7 @@ using namespace ast;
 int temporaryCnt = 0;
 
 extern SymbolTableStack * stackTable;
+extern SymbolTableStack * declStack;
 
 tac::CodeLine::CodeLine(string arg1, string arg2, string arg3, string arg4) {
 	this->arg1 = arg1;
@@ -26,13 +28,17 @@ void tac::CodeObject::addLine(CodeLine * line) {
 	this->codeList.push_back(line);
 }
 
+void tac::CodeObject::addRegister(string reg) {
+	this->tempReg.insert(reg);
+}
+
 string tac::CodeObject::getType() {
-	if (this->type == ast::Type::INT_VAL) {
-		return "i";
-	} else if (this->type == ast::Type::FLOAT_VAL) {
-		return "r";
-	} else {
+	if (this->type == ast::Type::STR_VAL) {
 		return "s";
+	} else if (this->type == ast::Type::INT_VAL) {
+		return "i";
+	} else {
+		return "r";
 	}
 }
 
@@ -65,6 +71,9 @@ CodeObject * tac::merge(CodeObject * left, CodeObject * right) {
 	merged->codeList.reserve(left->codeList.size() + right->codeList.size());
 	merged->codeList.insert(merged->codeList.end(), left->codeList.begin(), left->codeList.end());
 	merged->codeList.insert(merged->codeList.end(), right->codeList.begin(), right->codeList.end());
+	
+	merged->tempReg.insert(left->tempReg.begin(), left->tempReg.end());
+	merged->tempReg.insert(right->tempReg.begin(), right->tempReg.end());
 	return merged;
 }
 
@@ -89,6 +98,7 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 			node->getTAC(),
 			"r" + to_string(temporaryCnt), ""
 		));
+		merged->addRegister("r" + to_string(temporaryCnt));
 
 		merged->temporary = temporaryCnt;
 		merged->type = node->type;
@@ -99,8 +109,7 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		// right is expr
 		ASTNode_Identifier * leftNode = (ASTNode_Identifier *) node->left;
 		string rightLoc;
-		if (node->left->type == ast::Type::ID_FIER &&
-			node->right->type == ast::Type::ID_FIER) {
+		if (node->right->type == ast::Type::ID_FIER) {
 			// make a temporary for right var
 
 			ASTNode_Identifier * nodeNode = (ASTNode_Identifier *) node->right;
@@ -110,6 +119,8 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 				nodeNode->idName,
 				"r" + to_string(temporaryCnt), ""
 			));
+
+			merged->addRegister("r" + to_string(temporaryCnt));
 			merged->temporary = temporaryCnt;
 			merged->type = node->type;
 
@@ -161,11 +172,12 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 			"r" + to_string(temporaryCnt), ""
 		)); // MUL A B RO (MUL B RN)
 		merged->temporary = temporaryCnt;
+		merged->addRegister("r" + to_string(temporaryCnt));
 
 		temporaryCnt++;
 	} else if (node->type == ast::Type::ID_FIER) {
 		ASTNode_Identifier * idNode = (ASTNode_Identifier *) node;
-		Identifier * id = stackTable->findIdentifier(idNode->idName);	
+		Identifier * id = declStack->findIdentifier(idNode->idName);	
 
 		if (id != NULL) {
 			string idType = id->getType();
@@ -177,6 +189,7 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 			} else {
 				merged->type = ast::Type::STR_VAL;
 			}
+			idNode->idName = id->name;
 		} else {
 			// Strange enough, this identifier doesn't exist???
 		}
@@ -205,6 +218,8 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 				nodeNode->idName,
 				"r" + to_string(temporaryCnt), ""
 			));
+
+			merged->addRegister("r" + to_string(temporaryCnt));
 			merged->temporary = temporaryCnt;
 			merged->type = node->type;
 
@@ -227,6 +242,76 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 			leftStorage, rightStorage, ""
 		));
 
+	} else if (node->type == ast::Type::FUNC_CALL) {
+		ASTNode_Expr_List * exprNode = (ASTNode_Expr_List *) node->right;
+		ASTNode_Identifier * idNode = (ASTNode_Identifier *) node->left;
+
+		CodeObject * exprCode = new CodeObject();
+		CodeObject * regPushCode = new CodeObject();
+
+		// Expression 3AC
+		for(int i = 0; i < exprNode->exprList.size(); i++) {
+			ASTNode * myExprNode = exprNode->exprList[i];
+			CodeObject * exprIndCode = new CodeObject();
+
+			if (myExprNode->type == ast::Type::ID_FIER) {
+
+				ASTNode_Identifier * nodeNode = (ASTNode_Identifier *) myExprNode;
+				exprIndCode->addLine(new tac::CodeLine(
+					"move", 
+					declStack->findIdentifier(nodeNode->idName)->name,
+					"r" + to_string(temporaryCnt), ""
+				));
+
+				regPushCode->addRegister("r" + to_string(temporaryCnt));
+				temporaryCnt++;
+			} else {
+				exprIndCode = tac::buildTAC(myExprNode);
+				string regFinal = *(exprIndCode->tempReg.rbegin());
+				exprIndCode->tempReg.clear();
+				regPushCode->addRegister(regFinal);
+			}
+			
+			//exprIndCode->print();
+			exprCode = tac::merge(exprCode, exprIndCode);
+
+			//cout << "------" << endl;
+		}
+
+		merged = tac::merge(merged, exprCode);
+
+		set<string>::reverse_iterator rt;
+
+		// Push Registers
+		for(auto& reg : merged->tempReg) {
+			merged->addLine(new tac::CodeLine("push", reg, "", ""));
+		}
+
+		// Push Args
+		for(auto& reg : regPushCode->tempReg) {
+			merged->addLine(new tac::CodeLine("push", reg, "", ""));
+		}
+
+		merged->addLine(new tac::CodeLine("push", "", "", ""));
+		
+		// Call Function
+		merged->addLine(new tac::CodeLine("jsr", "FUNC_ID_" + idNode->idName, "", ""));
+		merged->addLine(new tac::CodeLine("pop", "r" + to_string(temporaryCnt), "", ""));
+
+		// Pop Args
+		for(rt = regPushCode->tempReg.rbegin(); rt != regPushCode->tempReg.rend(); ++rt) {
+			merged->addLine(new tac::CodeLine("pop", *rt, "", ""));
+		}
+
+		// Pop Registers
+		for(rt = merged->tempReg.rbegin(); rt != merged->tempReg.rend(); ++rt) {
+			merged->addLine(new tac::CodeLine("pop", *rt, "", ""));
+		}
+		
+		// Add New Register for Return Value
+		merged->addRegister("r" + to_string(temporaryCnt));
+		merged->temporary = temporaryCnt;
+		temporaryCnt++;
 	}
 	return merged;
 }

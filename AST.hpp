@@ -2,6 +2,7 @@
 #define AST_HPP
 
 #include<string>
+#include<vector>
 
 using namespace std;
 
@@ -9,7 +10,8 @@ namespace ast {
 
 	enum class Type {
 		ADD_EXPR, MUL_EXPR, INT_VAL, FLOAT_VAL, 
-		ID_FIER, ASSIGNMENT, STR_VAL, COMPARATOR, BOOLEAN
+		ID_FIER, ASSIGNMENT, STR_VAL, COMPARATOR, BOOLEAN,
+		FUNC_CALL, EXPR_LIST
 	};
 
 	class ASTNode {
@@ -79,8 +81,17 @@ namespace ast {
 			bool isTrue;
 	};
 
-	class ASTNode_CNTL_IF : public ASTNode {
+	class ASTNode_Function_Call : public ASTNode {
+		public:
+			ASTNode_Function_Call();
+	};
 
+	class ASTNode_Expr_List : public ASTNode {
+		public:
+			vector<ASTNode *> exprList;
+			ASTNode_Expr_List();
+		
+			void add(ASTNode * node);
 	};
 }
 

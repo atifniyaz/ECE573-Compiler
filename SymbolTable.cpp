@@ -5,33 +5,11 @@ SymbolTable::SymbolTable(string name, Identifier * ids, st::Type type) {
 	this->ids = ids;
 	this->type = type;
 	this->isLegalStr = "";
+	this->count = 1;
 
 	this->buildDeclMap(ids);
 }
 
-bool SymbolTable::isLegal() {
-	Identifier * currId = this->ids;
-	Identifier * iterId;
-
-	if (currId == NULL) { 
-		return true; 
-	}
-
-
-	while (currId->next != NULL) {
-		iterId = currId->next;
-		while (iterId != NULL) {
-			if (!currId->name.compare(iterId->name)) {
-				cout << "DECLARATION ERROR " << currId->name << endl;
-				return false;
-			}
-			iterId = iterId->next;
-		}
-		currId = currId->next;
-	}
-	return true;
-}
-/*
 bool SymbolTable::isLegal() {
 	if (!this->isLegalStr.empty()) {
 		cout << "DECLARATION ERROR " << this->isLegalStr << endl;
@@ -40,8 +18,7 @@ bool SymbolTable::isLegal() {
 		return true;
 	}
 }
-*/
-/*
+
 Identifier * SymbolTable::findIdentifier(string name) {
 	if (this->declMap.find(name) != this->declMap.end()) {
 		return this->declMap.find(name)->second;
@@ -49,28 +26,36 @@ Identifier * SymbolTable::findIdentifier(string name) {
 		return NULL;
 	}
 } 
-*/
-Identifier * SymbolTable::findIdentifier(string name) {
-	Identifier * currId = this->ids;
-	while (currId != NULL) {
-		if(!currId->name.compare(name)) {
-			return currId;
-			cout << endl;
-		}
-		currId = currId->next;
+
+void SymbolTable::reassignArgs(Identifier * ids) {
+	int counter = 3;
+	/****
+	Stack Design
+	anything else
+	args    <-- $3
+	ret val <-- $2
+	fp
+	*/
+	while(ids != NULL) {
+		ids->name = "$" + to_string(counter++);
+		ids = ids->next;
 	}
-	return NULL;
 }
 
 void SymbolTable::buildDeclMap(Identifier * ids) {
 	this->declMap.clear();
-	Identifier * currId = this->ids;
 	bool caughtFaulty = false;
 
-	while (currId != NULL) {
+	while (ids != NULL) {
 
-		Identifier * currIdCpy = currId;
+		Identifier * currIdCpy = ids;
 		string idName = currIdCpy->name;
+
+		if (type != st::Type::GLOBAL) {
+			// not a global identifier, thus generate a variable name on the stack
+			currIdCpy->name = "$-" + to_string(this->count);
+			this->count++;
+		}
 
 		if (!caughtFaulty && this->declMap.find(idName) != this->declMap.end()) {
 			this->isLegalStr = idName;
@@ -79,7 +64,7 @@ void SymbolTable::buildDeclMap(Identifier * ids) {
 			this->declMap.insert(pair<string, Identifier *>(idName, currIdCpy));
 		}
 
-		currId = currId->next;
+		ids = ids->next;
 	}
 }
 

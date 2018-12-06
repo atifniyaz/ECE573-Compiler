@@ -5,6 +5,7 @@
 
 #include "Identifier.hpp"
 #include "LLString.hpp"
+#include "SymbolTable.hpp"
 
 namespace bu {
 	
@@ -13,8 +14,8 @@ namespace bu {
 
 	IdString * buildString(LLString * name, LLString * value);
 
-	void addControlDecl(Identifier * id);
-	Identifier * addFuncDecl(Identifier * bodyDecl, Identifier * argsDecl, string name);
+	SymbolTable * addControlDecl(Identifier * id);
+	SymbolTable * addFuncDecl(Identifier * bodyDecl, Identifier * argsDecl, string name);
 }
 
 #endif
