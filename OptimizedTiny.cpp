@@ -74,15 +74,6 @@ void tac::CodeObject::configureCFG() {
 	}
 }
 
-void printInOut(CodeLine * line, int index) {
-	cout << ";" << index << ": " << line->stringify() << endl;
-	cout << "; outSet:";
-	for (set<string>::iterator it = line->outSet.begin(); it != line->outSet.end(); it++) {
-		cout << " " << *it;
-	}
-	cout << endl;
-}
-
 void tac::CodeObject::createGenKillSet() {
 	int size = codeList.size();
 	SymbolTable * globalVar = global;
@@ -196,10 +187,6 @@ void tac::CodeObject::createInOutSet() {
 			}
 		}
 	}
-
-	for(int i = 0; i < size; i++) {
-		printInOut(codeList[i], i);
-	} 
 }
 
 CodeObject * optimized = new CodeObject();
@@ -316,14 +303,12 @@ void tac::CodeObject::allocateRegisters() {
 		optimized->addLine(line);
 	}
 
-	cout << "; " << codeList[0]->stringify() << endl;
-	for(auto elem : dictReg)
-	{
-   		cout << ";" << elem.first << " " << elem.second << endl;
-	}
-
 	CodeObject * obj = new CodeObject();
-	for(auto elem : optimized->codeList) {
+
+	for(int i = 0; i < optimized->codeList.size() - 1; i++) {
+		CodeLine * elem = optimized->codeList[i];
+		CodeLine * elem2 = optimized->codeList[i + 1];
+
 		if (!elem->arg1.compare("move") && !elem->arg2.compare(elem->arg3)) {
 			continue;
 		} else if (!elem->arg1.compare("jsr")) {
