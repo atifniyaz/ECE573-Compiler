@@ -1,11 +1,11 @@
-CPPFLAGS = -std=c++11 -Wall -g
+CPPFLAGS = -std=c++0x -Wall -g
 GPP = g++ $(CPPFLAGS)
 
 compiler:
 	flex micro.lex
 	bison -d -o micro.c micro.y
 	$(GPP) -c *.cpp
-	$(GPP) -lfl -o micro lex.yy.c micro.c *.o
+	$(GPP) -o micro lex.yy.c micro.c *.o -lfl
 
 clean:
 	rm -f lex.yy.c
