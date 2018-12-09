@@ -1,4 +1,4 @@
-CPPFLAGS = -std=c++14 -Wall -g
+CPPFLAGS = -std=c++11 -Wall -g
 GPP = g++ $(CPPFLAGS)
 
 compiler:
@@ -14,6 +14,6 @@ clean:
 	rm -f micro.c
 	rm -f micro.h
 	rm -f *.hpp.gch
-	
+
 team:
 	echo "Team: Atif Niyaz\n\nAtif Niyaz\natifniyaz"
