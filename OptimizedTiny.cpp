@@ -322,7 +322,7 @@ void tac::CodeObject::allocateRegisters() {
 		} else {
 			obj->addLine(elem);
 		}
-	}
+	} 
 	codeList = obj->codeList;
 }
 
