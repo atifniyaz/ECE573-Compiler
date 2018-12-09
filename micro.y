@@ -20,6 +20,8 @@ using namespace std;
 using namespace bu;
 
 extern SymbolTableStack * stackTable;
+extern SymbolTable * global;
+
 SymbolTableStack * declStack = new SymbolTableStack();
 
 extern tac::CodeObject * masterCode;
@@ -98,6 +100,7 @@ pgm_body: decl
 		SymbolTable * table = new SymbolTable("GLOBAL", $1, st::Type::GLOBAL);
 		stackTable->enqueue(table);
 		declStack->push(table);
+		global = table;
 	}
 	func_declarations {
 		$$ = $3;
@@ -181,6 +184,9 @@ func_decl: FUNCTION any_type id '(' param_decl_list ')' _BEGIN
 		funcObj = tac::merge(funcObj, $10);
 		funcObj->addLine(new tac::CodeLine("unlnk", "", "", ""));
 		funcObj->addLine(new tac::CodeLine("ret", "", "", ""));
+
+		// optimize function code
+		funcObj->optimizeTiny();
 		$$ = funcObj;
 	}
 

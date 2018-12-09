@@ -225,9 +225,7 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 
 			rightStorage = "r" + to_string(temporaryCnt);
 			temporaryCnt++;
-		} else if(node->right->type == ast::Type::ID_FIER &&
-			(node->left->type == ast::Type::INT_VAL ||
-			 node->left->type == ast::Type::FLOAT_VAL)) {
+		} else if(node->right->type == ast::Type::ID_FIER) {
 			// Flip the two
 			// Reverse the operator
 			string tempStorage = leftStorage;
@@ -247,7 +245,7 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		ASTNode_Identifier * idNode = (ASTNode_Identifier *) node->left;
 
 		CodeObject * exprCode = new CodeObject();
-		CodeObject * regPushCode = new CodeObject();
+		vector<string> registers;
 
 		// Expression 3AC
 		for(int i = 0; i < exprNode->exprList.size(); i++) {
@@ -263,13 +261,13 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 					"r" + to_string(temporaryCnt), ""
 				));
 
-				regPushCode->addRegister("r" + to_string(temporaryCnt));
+				registers.push_back("r" + to_string(temporaryCnt));
 				temporaryCnt++;
 			} else {
 				exprIndCode = tac::buildTAC(myExprNode);
 				string regFinal = *(exprIndCode->tempReg.rbegin());
 				exprIndCode->tempReg.clear();
-				regPushCode->addRegister(regFinal);
+				registers.push_back(regFinal);
 			}
 			
 			//exprIndCode->print();
@@ -288,10 +286,11 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		}
 
 		// Push Args
-		for(auto& reg : regPushCode->tempReg) {
-			merged->addLine(new tac::CodeLine("push", reg, "", ""));
+		for(int i = 0; i < registers.size(); i++) {
+			merged->addLine(new tac::CodeLine("push", registers[i], "", ""));
 		}
 
+		// Push Return Value
 		merged->addLine(new tac::CodeLine("push", "", "", ""));
 		
 		// Call Function
@@ -299,8 +298,8 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 		merged->addLine(new tac::CodeLine("pop", "r" + to_string(temporaryCnt), "", ""));
 
 		// Pop Args
-		for(rt = regPushCode->tempReg.rbegin(); rt != regPushCode->tempReg.rend(); ++rt) {
-			merged->addLine(new tac::CodeLine("pop", *rt, "", ""));
+		for(int i = registers.size() - 1; i >= 0; i--) {
+			merged->addLine(new tac::CodeLine("pop", registers[i], "", ""));
 		}
 
 		// Pop Registers

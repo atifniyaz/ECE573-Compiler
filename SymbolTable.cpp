@@ -10,6 +10,11 @@ SymbolTable::SymbolTable(string name, Identifier * ids, st::Type type) {
 	this->buildDeclMap(ids);
 }
 
+SymbolTable::SymbolTable() {
+	this->name = "GLOBAL";
+	this->type = st::Type::GLOBAL;
+}
+
 bool SymbolTable::isLegal() {
 	if (!this->isLegalStr.empty()) {
 		cout << "DECLARATION ERROR " << this->isLegalStr << endl;
@@ -51,7 +56,9 @@ void SymbolTable::buildDeclMap(Identifier * ids) {
 		Identifier * currIdCpy = ids;
 		string idName = currIdCpy->name;
 
-		if (type != st::Type::GLOBAL) {
+		if (!currIdCpy->getType().compare("STRING")) {
+			currIdCpy->name = this->name + "_" + currIdCpy->name;
+		} else if (type != st::Type::GLOBAL) {
 			// not a global identifier, thus generate a variable name on the stack
 			currIdCpy->name = "$-" + to_string(this->count);
 			this->count++;
@@ -73,7 +80,7 @@ void SymbolTable::print() {
 	    Identifier * id = any.second;
 	   	if (!id->getType().compare("STRING")) {
 			cout << "str " << id->name << " " << ((IdString *) id)->value << endl;
-		} else {
+		} else if(this->type == st::Type::GLOBAL) {
 			cout << "var " << id->name << endl;
 		} 
 	}

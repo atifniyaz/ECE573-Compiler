@@ -14,11 +14,22 @@ namespace tac {
 
 	class CodeLine {
 	public:
-		CodeLine(string arg1, string arg2, string arg3, string arg4);
 		string arg1;
 		string arg2;
 		string arg3;
 		string arg4;
+		
+		set<CodeLine *> predecessors;
+		set<CodeLine *> successors;
+
+		set<string> genSet;
+		set<string> killSet;
+
+		set<string>	inSet;
+		set<string>	outSet;
+
+		CodeLine(string arg1, string arg2, string arg3, string arg4);
+
 		string stringify() {
 			return arg1 + " " + arg2 + " " + arg3 + " " + arg4;
 		}
@@ -27,6 +38,7 @@ namespace tac {
 	class CodeObject {
 	public:
 		vector<CodeLine *> codeList;
+		vector<bool> reset;
 		set<string> tempReg;
 		int temporary;
 		ast::Type type; // more specifically for value type (int, float, str)
@@ -34,7 +46,16 @@ namespace tac {
 		void addLine(CodeLine * line);
 		void addRegister(string reg);
 		void print();
+
+		void optimizeTiny();
 		string getType();
+
+	private:
+		void configureCFG();
+		void createGenKillSet();
+		void createInOutSet();
+		void allocateRegisters();
+		void createReset();
 	};
 
 	CodeObject * merge(CodeObject * left, CodeObject * right);

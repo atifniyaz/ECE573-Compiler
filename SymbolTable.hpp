@@ -23,6 +23,7 @@ public:
 	map<string, Identifier *> declMap;
 	string isLegalStr;
 
+	SymbolTable();
 	SymbolTable(string name, Identifier * ids, st::Type type);
 
 	bool isLegal();

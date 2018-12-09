@@ -34,7 +34,6 @@ int main(int argc, char ** argv) {
 		cout << "Not Accepted";
 	} else {
 		if (parseSymbolTable()) {
-
 			vector<tac::CodeLine *> lines = masterCode->codeList;
 
 			for(int i = 0; i < lines.size(); i++) {
@@ -59,6 +58,10 @@ bool parseSymbolTable() {
 			return false;
 		}
 	}
-	holder->poll()->print();
+	while(!holder->isEmpty()) {
+		SymbolTable * data = holder->poll();
+		data->print();
+		stackTable->enqueue(data);
+	}
 	return true;
 }
