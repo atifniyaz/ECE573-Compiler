@@ -311,7 +311,7 @@ void tac::CodeObject::allocateRegisters() {
 					line->arg3 = "r" + to_string(indxR2);
 				}
 			}
-		} // 8, 17
+		} // 17
 
 		optimized->addLine(line);
 	}
@@ -321,7 +321,24 @@ void tac::CodeObject::allocateRegisters() {
 	{
    		cout << ";" << elem.first << " " << elem.second << endl;
 	}
-	codeList = optimized->codeList;
+
+	CodeObject * obj = new CodeObject();
+	for(auto elem : optimized->codeList) {
+		if (!elem->arg1.compare("move") && !elem->arg2.compare(elem->arg3)) {
+			continue;
+		} /*else if (!elem->arg1.compare("jsr")) {
+			for(int i = 0; i < 4; i++) {
+				obj->addLine(new CodeLine("push", "r" + to_string(i), "", ""));
+			}
+			obj->addLine(elem);
+			for(int i = 3; i >= 0; i--) {
+				obj->addLine(new CodeLine("pop", "r" + to_string(i), "", ""));
+			}
+		} */else {
+			obj->addLine(elem);
+		}
+	}
+	codeList = obj->codeList;
 }
 
 int ensure(string reg, CodeLine * prev) {

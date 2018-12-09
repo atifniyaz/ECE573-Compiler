@@ -36,9 +36,12 @@ void SymbolTable::reassignArgs(Identifier * ids) {
 	int counter = 3;
 	/****
 	Stack Design
-	anything else
-	args    <-- $3
-	ret val <-- $2
+	args    <-- $7
+	ret val <-- $6
+	r3 <-- $5
+	r2 <-- $4
+	r1 <-- $3
+	r0 <-- $2
 	fp
 	*/
 	while(ids != NULL) {

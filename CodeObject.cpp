@@ -285,12 +285,12 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 			merged->addLine(new tac::CodeLine("push", reg, "", ""));
 		}
 
-		// Push Args
+		// Push Args ($7 and above)
 		for(int i = 0; i < registers.size(); i++) {
 			merged->addLine(new tac::CodeLine("push", registers[i], "", ""));
 		}
 
-		// Push Return Value
+		// Push Return Value ($6)
 		merged->addLine(new tac::CodeLine("push", "", "", ""));
 		
 		// Call Function
