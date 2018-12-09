@@ -326,15 +326,15 @@ void tac::CodeObject::allocateRegisters() {
 	for(auto elem : optimized->codeList) {
 		if (!elem->arg1.compare("move") && !elem->arg2.compare(elem->arg3)) {
 			continue;
-		} /*else if (!elem->arg1.compare("jsr")) {
+		} else if (!elem->arg1.compare("jsr")) {
 			for(int i = 0; i < 4; i++) {
-				obj->addLine(new CodeLine("push", "r" + to_string(i), "", ""));
+				obj->addLine(new CodeLine("move", "r" + to_string(i), "$-" + to_string(i + 1), ""));
 			}
 			obj->addLine(elem);
-			for(int i = 3; i >= 0; i--) {
-				obj->addLine(new CodeLine("pop", "r" + to_string(i), "", ""));
+			for(int i = 0; i < 4; i++) {
+				obj->addLine(new CodeLine("move", "$-" + to_string(i + 1), "r" + to_string(i), ""));
 			}
-		} */else {
+		} else {
 			obj->addLine(elem);
 		}
 	}

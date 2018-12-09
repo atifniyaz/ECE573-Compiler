@@ -180,7 +180,7 @@ func_decl: FUNCTION any_type id '(' param_decl_list ')' _BEGIN
 
 		tac::CodeObject * funcObj = new tac::CodeObject();
 		funcObj->addLine(new tac::CodeLine("label", "FUNC_ID_" + $3->value, "", ""));
-		funcObj->addLine(new tac::CodeLine("link", to_string($8->count()), "", ""));
+		funcObj->addLine(new tac::CodeLine("link", to_string($8->count() + 4), "", ""));
 		funcObj = tac::merge(funcObj, $10);
 		funcObj->addLine(new tac::CodeLine("unlnk", "", "", ""));
 		funcObj->addLine(new tac::CodeLine("ret", "", "", ""));

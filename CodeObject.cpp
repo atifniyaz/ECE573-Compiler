@@ -280,17 +280,17 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 
 		set<string>::reverse_iterator rt;
 
-		// Push Registers
-		for(auto& reg : merged->tempReg) {
-			merged->addLine(new tac::CodeLine("push", reg, "", ""));
-		}
+		// // Push Registers
+		// for(auto& reg : merged->tempReg) {
+		// 	merged->addLine(new tac::CodeLine("push", reg, "", ""));
+		// }
 
-		// Push Args ($7 and above)
+		// Push Args
 		for(int i = 0; i < registers.size(); i++) {
 			merged->addLine(new tac::CodeLine("push", registers[i], "", ""));
 		}
 
-		// Push Return Value ($6)
+		// Push Return Value
 		merged->addLine(new tac::CodeLine("push", "", "", ""));
 		
 		// Call Function
@@ -302,10 +302,10 @@ CodeObject * tac::buildTAC(ASTNode * node) {
 			merged->addLine(new tac::CodeLine("pop", registers[i], "", ""));
 		}
 
-		// Pop Registers
-		for(rt = merged->tempReg.rbegin(); rt != merged->tempReg.rend(); ++rt) {
-			merged->addLine(new tac::CodeLine("pop", *rt, "", ""));
-		}
+		// // Pop Registers
+		// for(rt = merged->tempReg.rbegin(); rt != merged->tempReg.rend(); ++rt) {
+		// 	merged->addLine(new tac::CodeLine("pop", *rt, "", ""));
+		// }
 		
 		// Add New Register for Return Value
 		merged->addRegister("r" + to_string(temporaryCnt));

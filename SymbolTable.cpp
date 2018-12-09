@@ -5,7 +5,7 @@ SymbolTable::SymbolTable(string name, Identifier * ids, st::Type type) {
 	this->ids = ids;
 	this->type = type;
 	this->isLegalStr = "";
-	this->count = 1;
+	this->count = 5;
 
 	this->buildDeclMap(ids);
 }
