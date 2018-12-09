@@ -1,7 +1,6 @@
 #include<string>
 #include<vector>
 #include<iterator>
-#include<regex>
 #include<algorithm>
 #include "CodeObject.hpp"
 #include "Identifier.hpp"
@@ -98,8 +97,9 @@ void tac::CodeObject::createGenKillSet() {
 			line->genSet.insert(arg1);
 			line->genSet.insert(arg2);
 		} else if (!op.compare("jsr")) {
-			for (const auto& any : globalVar->declMap) {
-			 	Identifier * id = any.second;
+			for (map<string, Identifier *>::iterator it = globalVar->declMap.begin();
+				it != globalVar->declMap.end(); it++) {
+				Identifier * id = it->second;
 				line->genSet.insert(id->name);
 			}
 		} else if (!op.compare("move") ||
@@ -137,8 +137,9 @@ void tac::CodeObject::createInOutSet() {
 		CodeLine * line = codeList[i];
 
 		if (!line->arg1.compare("ret")) {
-			for (const auto& any : globalVar->declMap) {
-			 	Identifier * id = any.second;
+			for (map<string, Identifier *>::iterator it = globalVar->declMap.begin();
+				it != globalVar->declMap.end(); it++) {
+				Identifier * id = it->second;
 				line->outSet.insert(id->name);
 			}
 		}
@@ -194,16 +195,6 @@ string register4R [] = {"", "", "", ""};
 bool dirty4R [] = {false, false, false, false};
 vector<string> usedList;
 
-string printSet(set<string> aSet) {
-	string s;
-	for (auto const& e : aSet)
-	{
-	    s += e;
-	    s += ',';
-	}
-	return s;
-}
-
 void tac::CodeObject::createReset() {
 	int size = codeList.size();
 	for (int i = 0; i < size; i++) {
@@ -212,7 +203,9 @@ void tac::CodeObject::createReset() {
 			reset.push_back(true);
 		} else {
 			bool predFlag = false;
-			for(auto predecessor : line->predecessors) {
+			for(set<CodeLine *>::iterator it = line->predecessors.begin();
+				it != line->predecessors.end(); it++) {
+				CodeLine * predecessor = *it;
 				string op = predecessor->arg1;
 				if(	!op.compare("jmp") ||
 					!op.compare("jeq") ||
@@ -233,9 +226,25 @@ void tac::CodeObject::createReset() {
 	}
 }
 
+bool matchReg(string reg) {
+	if (reg.size() < 2) {
+		return false;
+	}
+	for (int i = 0; i < reg.size(); i++) {
+		char c = reg[i];
+		if (i == 0 && c == 'r') {
+			continue;
+		} else if(i != 0 && c >= '0' && c <= '9') {
+			continue;
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
+
 void tac::CodeObject::allocateRegisters() {
 	int size = codeList.size();
-	regex validReg ("r[0-9]+");
 	map<string, int> dictReg;
 	resetAllocation();
 
@@ -256,28 +265,28 @@ void tac::CodeObject::allocateRegisters() {
 			op.find("sub") != string::npos ||
 			!op.compare("pop")) {
 
-			if (std::regex_match(arg1, validReg)) {
+			if (matchReg(arg1)) {
 				if (dictReg.find(arg1) != dictReg.end()) {
 					indxR1 = dictReg.find(arg1)->second;
-					line->arg2 = "r" + to_string(indxR1);
+					line->arg2 = "r" + to_string(static_cast<long long>(indxR1));
 				} else {
 					indxR1 = ensure(arg1, codeList[i - 1]);
-					line->arg2 = "r" + to_string(indxR1);
+					line->arg2 = "r" + to_string(static_cast<long long>(indxR1));
 					dictReg.insert(pair<string, int>(arg1, indxR1));
 				}
 			}
 
-			if (line->outSet.find(arg1) == line->outSet.end()) {
+			if (indxR1 != -1 && line->outSet.find(arg1) == line->outSet.end()) {
 				free(indxR1);
 			}
 
-			if (std::regex_match(arg2, validReg)) {
+			if (matchReg(arg2)) {
 				if (dictReg.find(arg2) != dictReg.end()) {
 					indxR2 = dictReg.find(arg2)->second;
-					line->arg3 = "r" + to_string(indxR2);
+					line->arg3 = "r" + to_string(static_cast<long long>(indxR2));
 				} else {
 					indxR2 = allocate(arg2, codeList[i - 1]);
-					line->arg3 = "r" + to_string(indxR2);
+					line->arg3 = "r" + to_string(static_cast<long long>(indxR2));
 					dictReg.insert(pair<string, int>(arg2, indxR2));
 					dirty4R[indxR2] = true;
 				}
@@ -286,16 +295,16 @@ void tac::CodeObject::allocateRegisters() {
 		} else if(!op.compare("ret") || this->reset[i]) {
 			spill(true);
 		} else {
-			if (std::regex_match(arg1, validReg)) {
+			if (matchReg(arg1)) {
 				if (dictReg.find(arg1) != dictReg.end()) {
 					indxR1 = dictReg.find(arg1)->second;
-					line->arg2 = "r" + to_string(indxR1);
+					line->arg2 = "r" + to_string(static_cast<long long>(indxR1));
 				}
 			}
-			if (std::regex_match(arg2, validReg)) {
+			if (matchReg(arg2)) {
 				if (dictReg.find(arg2) != dictReg.end()) {
 					indxR2 = dictReg.find(arg2)->second;
-					line->arg3 = "r" + to_string(indxR2);
+					line->arg3 = "r" + to_string(static_cast<long long>(indxR2));
 				}
 			}
 		} // 17
@@ -305,19 +314,20 @@ void tac::CodeObject::allocateRegisters() {
 
 	CodeObject * obj = new CodeObject();
 
-	for(int i = 0; i < optimized->codeList.size() - 1; i++) {
+	for(int i = 0; i < optimized->codeList.size(); i++) {
 		CodeLine * elem = optimized->codeList[i];
-		CodeLine * elem2 = optimized->codeList[i + 1];
-
+		
 		if (!elem->arg1.compare("move") && !elem->arg2.compare(elem->arg3)) {
 			continue;
 		} else if (!elem->arg1.compare("jsr")) {
 			for(int i = 0; i < 4; i++) {
-				obj->addLine(new CodeLine("move", "r" + to_string(i), "$-" + to_string(i + 1), ""));
+				obj->addLine(new CodeLine("move", "r" + to_string(static_cast<long long>(i)),
+				"$-" + to_string(static_cast<long long>(i + 1)), ""));
 			}
 			obj->addLine(elem);
 			for(int i = 0; i < 4; i++) {
-				obj->addLine(new CodeLine("move", "$-" + to_string(i + 1), "r" + to_string(i), ""));
+				obj->addLine(new CodeLine("move", "$-" + to_string(static_cast<long long>(i + 1)),
+				"r" + to_string(static_cast<long long>(i)), ""));
 			}
 		} else {
 			obj->addLine(elem);
@@ -328,7 +338,7 @@ void tac::CodeObject::allocateRegisters() {
 
 int ensure(string reg, CodeLine * prev) {
 	// see if register is already there
-	regex validReg ("r[0-9]+");
+	//regex validReg ("r[0-9]+");
 	for (int i = 3; i >= 0; i--) {
 		if (!reg.compare(register4R[i])) {
 			return i;
@@ -336,11 +346,11 @@ int ensure(string reg, CodeLine * prev) {
 	}
 
 	int regIndex = allocate(reg, prev);
-	if(!std::regex_match(reg, validReg) || 
+	if(!matchReg(reg) || 
 		find(usedList.begin(), usedList.end(), reg) != usedList.end()) {
 
 	}
-	if(std::regex_match(reg, validReg) && 
+	if(matchReg(reg) && 
 		find(usedList.begin(), usedList.end(), reg) == usedList.end()) {
 		usedList.push_back(reg);
 	}
@@ -372,15 +382,15 @@ int allocate(string reg, CodeLine * prev) {
 	}
 
 	free(freeIndex);
-	register4R[freeIndex] = reg;
+	register4R[freeIndex] = reg;;
 	return freeIndex;
 }
 
 void free(int i) {
-	regex validReg ("r[0-9]+");
-	if (dirty4R[i] && !regex_match(register4R[i], validReg)) {
+	//regex validReg ("r[0-9]+");
+	if (dirty4R[i] && !matchReg(register4R[i])) {
 		optimized->addLine(new CodeLine(
-			"move", "r" + to_string(i), register4R[i], ""	
+			"move", "r" + to_string(static_cast<long long>(i)), register4R[i], ""	
 		));
 	}
 	register4R[i] = "";
@@ -388,12 +398,12 @@ void free(int i) {
 }
 
 void spill(bool write) {
-	regex validReg ("r[0-9]+");
+	//regex validReg ("r[0-9]+");
 	for (int i = 3; i >= 0; i--) {
 		if (write && register4R[i].compare("") &&
-			!regex_match(register4R[i], validReg)) {
+			!matchReg(register4R[i])) {
 			optimized->addLine(new CodeLine(
-				"move", "r" + to_string(i), register4R[i], ""	
+				"move", "r" + to_string(static_cast<long long>(i)), register4R[i], ""	
 			));
 		}
 		register4R[i] = "";

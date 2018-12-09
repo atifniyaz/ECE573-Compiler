@@ -9,6 +9,8 @@
 
 #include "micro.h"
 
+extern "C" int yylex();
+
 %}
 
 LETTER  	[A-Za-z]

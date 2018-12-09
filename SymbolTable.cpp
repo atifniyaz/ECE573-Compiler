@@ -45,7 +45,7 @@ void SymbolTable::reassignArgs(Identifier * ids) {
 	fp
 	*/
 	while(ids != NULL) {
-		ids->name = "$" + to_string(counter++);
+		ids->name = "$" + to_string(static_cast<long long>(counter++));
 		ids = ids->next;
 	}
 }
@@ -63,7 +63,7 @@ void SymbolTable::buildDeclMap(Identifier * ids) {
 			currIdCpy->name = this->name + "_" + currIdCpy->name;
 		} else if (type != st::Type::GLOBAL) {
 			// not a global identifier, thus generate a variable name on the stack
-			currIdCpy->name = "$-" + to_string(this->count);
+			currIdCpy->name = "$-" + to_string(static_cast<long long>(this->count));
 			this->count++;
 		}
 
@@ -79,8 +79,9 @@ void SymbolTable::buildDeclMap(Identifier * ids) {
 }
 
 void SymbolTable::print() {
-	for (const auto& any : this->declMap) {
-	    Identifier * id = any.second;
+
+	for (map<string, Identifier*>::iterator it = this->declMap.begin(); it != this->declMap.end(); it++) {
+	    Identifier * id = it->second;
 	   	if (!id->getType().compare("STRING")) {
 			cout << "str " << id->name << " " << ((IdString *) id)->value << endl;
 		} else if(this->type == st::Type::GLOBAL) {

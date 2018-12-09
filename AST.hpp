@@ -44,7 +44,7 @@ namespace ast {
 			ASTNode_INT(int value);
 			int value;
 			string getTAC() {
-				return to_string(value);
+				return to_string(static_cast<long long>(value));
 			}
 	};
 
@@ -53,7 +53,7 @@ namespace ast {
 			ASTNode_FLOAT(float value);
 			float value;
 			string getTAC() {
-				return to_string(value);
+				return to_string(static_cast<long double>(value));
 			}
 	};
 

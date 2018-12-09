@@ -17,6 +17,14 @@ int temporaryCnt = 0;
 extern SymbolTableStack * stackTable;
 extern SymbolTableStack * declStack;
 
+string to_string(int val) {
+	return to_string(static_cast<long long>(val));
+}
+
+string to_string(float val) {
+	return to_string(static_cast<long double>(val));
+}
+
 tac::CodeLine::CodeLine(string arg1, string arg2, string arg3, string arg4) {
 	this->arg1 = arg1;
 	this->arg2 = arg2;

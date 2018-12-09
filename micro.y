@@ -10,11 +10,13 @@
 #include "LLString.hpp"
 #include "BisonUtility.hpp"
 
-int yylex();
-void yyerror(char *s);
+void yyerror(const char *s);
 
 extern "C" int yyparse();
 extern "C" FILE *yyin;
+extern "C" int yylex();
+
+string to_string(int val);
 
 using namespace std;
 using namespace bu;

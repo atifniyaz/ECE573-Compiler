@@ -7,13 +7,15 @@
 #include "SymbolTableStack.hpp"
 #include "LLString.hpp"
 
+extern "C" {
 #include "micro.h"
+}
 
 SymbolTableStack * stackTable = new SymbolTableStack();
 tac::CodeObject * masterCode = new tac::CodeObject();
 tac::CodeObject * tinyCode = new tac::CodeObject();
 
-extern FILE * yyin;
+extern "C" FILE * yyin;
 
 extern "C" int yyparse();
 bool parseSymbolTable();
@@ -44,7 +46,7 @@ int main(int argc, char ** argv) {
 	return 0;
 }
 
-void yyerror(char *s) { 
+void yyerror(const char *s) { 
 	cout << s << endl;
 }
 
