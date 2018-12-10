@@ -443,6 +443,10 @@ while_stmt: WHILE '(' cond ')' decl {
 	} stmt_list ENDWHILE {
 		declStack->pop();
 		tac::CodeObject * loopCode = $7;
+		bu::findControl(loopCode, 
+			new tac::CodeLine("jmp", "WHILE_" + to_string(whileCnt), "", ""),
+			new tac::CodeLine("jmp", "OUT_" + to_string(outCnt), "", "")
+		);
 		tac::CodeObject * conditionCode;
 		tac::CodeObject * labelWhile = new tac::CodeObject();
 		tac::CodeObject * comparator = new tac::CodeObject();
@@ -488,9 +492,11 @@ while_stmt: WHILE '(' cond ')' decl {
 control_stmt: return_stmt {
 		$$ = $1;
 	} | CONTINUE ';' {
-		$$ = NULL;
+		$$ = new tac::CodeObject();
+		$$->addLine(new tac::CodeLine(";CONTINUE", "", "", ""));
 	} | BREAK ';' {
-		$$ = NULL;
+		$$ = new tac::CodeObject();
+		$$->addLine(new tac::CodeLine(";BREAK", "", "", ""));
 	}
 loop_stmt: while_stmt { $$ = $1; } | for_stmt { $$ = $1; }
 init_stmt: { $$ = NULL; } | assign_expr { $$ = $1; }
@@ -501,6 +507,10 @@ for_stmt: FOR '(' init_stmt ';' cond ';' incr_stmt ')' decl {
 	} stmt_list ENDFOR {
 		declStack->pop();
 		tac::CodeObject * loopCode = $11;
+		bu::findControl(loopCode, 
+			new tac::CodeLine("jmp", "INCR_" + to_string(incrCnt), "", ""),
+			new tac::CodeLine("jmp", "OUT_" + to_string(outCnt), "", "")
+		);
 		tac::CodeObject * conditionCode = new tac::CodeObject();
 		tac::CodeObject * labelFor = new tac::CodeObject();
 		tac::CodeObject * comparator = new tac::CodeObject();
@@ -522,7 +532,6 @@ for_stmt: FOR '(' init_stmt ';' cond ';' incr_stmt ')' decl {
 		incr->addLine(new tac::CodeLine(
 			"label", "INCR_" + to_string(incrCnt), "",""
 		)); // incr label
-		
 
 		if ($5->type == ast::Type::BOOLEAN) {
 			ASTNode_Boolean * boolNode = (ASTNode_Boolean *) $3;

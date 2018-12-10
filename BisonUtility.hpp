@@ -6,6 +6,7 @@
 #include "Identifier.hpp"
 #include "LLString.hpp"
 #include "SymbolTable.hpp"
+#include "CodeObject.hpp"
 
 namespace bu {
 	
@@ -16,6 +17,8 @@ namespace bu {
 
 	SymbolTable * addControlDecl(Identifier * id);
 	SymbolTable * addFuncDecl(Identifier * bodyDecl, Identifier * argsDecl, string name);
+
+	void findControl(tac::CodeObject * list, tac::CodeLine * contLine, tac::CodeLine * outLine);
 }
 
 #endif

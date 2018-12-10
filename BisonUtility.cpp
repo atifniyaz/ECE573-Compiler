@@ -3,6 +3,7 @@
 #include "SymbolTable.hpp"
 #include "SymbolTableStack.hpp"
 #include "LLString.hpp"
+#include "CodeObject.hpp"
 
 extern SymbolTableStack * stackTable;
 extern int blockCnt;
@@ -65,4 +66,16 @@ Identifier * bu::buildDeclFromList(LLString * type, LLString * list) {
 		}
 	}
 	return head;
+}
+
+void bu::findControl(tac::CodeObject * list, tac::CodeLine * contLine, tac::CodeLine * outLine) {
+	if(list == NULL) { return; }
+	for(int i = 0; i < list->codeList.size(); i++) {
+		tac::CodeLine * line = list->codeList[i];
+		if(!line->arg1.compare(";CONTINUE")) {
+			list->codeList[i] = contLine;
+		} else if(!line->arg1.compare(";BREAK")) {
+			list->codeList[i] = outLine;
+		}
+	}
 }
