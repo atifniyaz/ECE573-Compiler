@@ -2,6 +2,12 @@
 
 This compiler is designed using C/C++, Flex, and Bison for compiling MICRO code. An optimization made for this project was to limit the number of registers utilized to four for this compiler.
 
+## How to Make
+````
+git clone https://github.com/atifniyaz/ECE573-Compiler
+cd ./ECE573-Compiler
+make
+````
 ## Structure
 
 The project is divided into a three main parts:
